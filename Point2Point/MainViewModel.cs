@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using OxyPlot;
+using Point2Point.Calculation;
 
 namespace Point2Point
 {
@@ -79,7 +80,7 @@ namespace Point2Point
 
             try
             {
-                var calc = new Calculator(TargetDistance, JerkMax, AccelerationMax, VelocityMax);
+                var calc = new P2PCalculator(TargetDistance, JerkMax, AccelerationMax, VelocityMax);
 
                 for (double t = 0; t <= calc.t7; t += 0.001)
                 {

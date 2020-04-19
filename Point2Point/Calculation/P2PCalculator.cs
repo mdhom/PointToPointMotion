@@ -1,9 +1,9 @@
 ﻿using System;
 
-namespace Point2Point
+namespace Point2Point.Calculation
 {
 #pragma warning disable IDE1006 // Naming Styles
-    public class Calculator
+    public class P2PCalculator
     {
         private readonly double jMax;
         private readonly double aMax;
@@ -18,7 +18,7 @@ namespace Point2Point
         public double t7 { get; }
         public int TrajectoryInstanceCase { get; }
 
-        public Calculator(double s, double jMax, double aMax, double vMax)
+        public P2PCalculator(double s, double jMax, double aMax, double vMax)
         {
             this.jMax = jMax;
             this.aMax = aMax;
@@ -127,7 +127,7 @@ namespace Point2Point
             j = -jMax;
             a = a2 - jMax * tPhase;
             v = v2 + a2 * tPhase + 0.5 * -jMax * tPhase2;
-            s = s2 + v2 * tPhase + 0.5 * a2 * tPhase2 + (-jMax / 6) * tPhase3;
+            s = s2 + v2 * tPhase + 0.5 * a2 * tPhase2 + -jMax / 6 * tPhase3;
         }
 
         private void GetStatus4(double t, double v3, double s3, out double j, out double a, out double v, out double s)
@@ -147,7 +147,7 @@ namespace Point2Point
             j = -jMax;
             a = -jMax * tPhase;
             v = v4 + 0.5 * -jMax * tPhase2;
-            s = s4 + v4 * tPhase + (-jMax / 6) * tPhase3;
+            s = s4 + v4 * tPhase + -jMax / 6 * tPhase3;
         }
 
         private void GetStatus6(double t, double a5, double v5, double s5, out double j, out double a, out double v, out double s)
@@ -168,7 +168,7 @@ namespace Point2Point
             j = jMax;
             a = a6 + jMax * tPhase;
             v = v6 + a6 * tPhase + 0.5 * jMax * tPhase2;
-            s = s6 + v6 * tPhase + 0.5 * a6 * tPhase2 + (jMax / 6) * tPhase3;
+            s = s6 + v6 * tPhase + 0.5 * a6 * tPhase2 + jMax / 6 * tPhase3;
         }
 
         private int GetTrajectoryInstance(double s)
@@ -187,7 +187,7 @@ namespace Point2Point
             //          (s = 15000, j = 2000, a = 500,  vMax = 20500)
 
             var v_a = aMax * aMax / jMax;
-            var s_a = (2 * aMax * aMax * aMax) / (jMax * jMax);
+            var s_a = 2 * aMax * aMax * aMax / (jMax * jMax);
             double s_v;
             if (vMax * jMax < aMax * aMax)
             {
