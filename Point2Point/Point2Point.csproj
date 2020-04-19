@@ -71,6 +71,8 @@
       <DependentUpon>App.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Calculation\JointMotionProfile\JointMotionProfile.cs" />
+    <Compile Include="Calculation\JointMotionProfile\MotionProfileSegment.cs" />
     <Compile Include="Calculation\Ramp\P2PCalculatorExtensions.cs" />
     <Compile Include="Calculation\Ramp\RampCalculationResult.cs" />
     <Compile Include="Calculation\Ramp\RampCalculator.cs" />
