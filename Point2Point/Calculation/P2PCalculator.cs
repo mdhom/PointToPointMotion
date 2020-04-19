@@ -19,6 +19,8 @@ namespace Point2Point.Calculation
         public double t7 { get; }
         public int TrajectoryInstanceCase { get; }
 
+        public double TotalTime => t7;
+
         public P2PCalculator(double s, double jerkMax, double accelerationMax, double velocityMax)
         {
             JerkMax = jerkMax;
@@ -284,7 +286,11 @@ namespace Point2Point.Calculation
             return s;
         }
 
-        public double GetTotalTime() => t7;
+        public double CalculateMaximumReachedVelocity()
+        {
+            GetStatus(t3, out _, out _, out var v, out _);
+            return v;
+        }
     }
 #pragma warning restore IDE1006 // Naming Styles
 #pragma warning restore IDE0059 // Unnecessary assignments
