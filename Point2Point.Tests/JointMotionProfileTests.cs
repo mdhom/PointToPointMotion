@@ -12,11 +12,12 @@ namespace Point2Point.Tests
         public void AppendWorks()
         {
             // Arrange
-            var joint = new JointMotionProfile();
+            var joint = new JointMotionProfile(
+                new MotionProfileSegment(0, 1000, 500));
 
             // Act
-            joint.Append(new MotionProfileSegment(0, 1000, 500));
-            joint.Append(new MotionProfileSegment(double.MaxValue, 1000, 200)); // wrong start here on purpose! Must be overwritten by Append
+            // Wrong start here on purpose! Must be overwritten by Append
+            joint.Append(new MotionProfileSegment(double.MaxValue, 1000, 200)); 
 
             // Assert
             Assert.AreEqual(2, joint.Segments.Count);
@@ -27,10 +28,10 @@ namespace Point2Point.Tests
         public void GetEffectiveSegmentsWorks()
         {
             // Arrange
-            var joint = new JointMotionProfile();
-            joint.Insert(new MotionProfileSegment(0,    1000, 500));
-            joint.Insert(new MotionProfileSegment(1000, 1000, 400));
-            joint.Insert(new MotionProfileSegment(500,  1000, 200));
+            var joint = new JointMotionProfile(
+                new MotionProfileSegment(0,    1000, 500),
+                new MotionProfileSegment(1000, 1000, 400),
+                new MotionProfileSegment(500,  1000, 200));
 
             // Act
             var effectiveSegments = joint.GetEffectiveSegments();
@@ -52,10 +53,10 @@ namespace Point2Point.Tests
         public void GapsBetweenSegmentsAreFilledUp()
         {
             // Arrange
-            var joint = new JointMotionProfile();
-            joint.Insert(new MotionProfileSegment(0, 1000, 500));
-            joint.Insert(new MotionProfileSegment(1000, 1000, 400));
-            joint.Insert(new MotionProfileSegment(2500, 1000, 200)); // start 500mm after end of last segment (2000)
+            var joint = new JointMotionProfile(
+                new MotionProfileSegment(0, 1000, 500),
+                new MotionProfileSegment(1000, 1000, 400),
+                new MotionProfileSegment(2500, 1000, 200)); // start 500mm after end of last segment (2000)
 
             // Act
             var effectiveSegments = joint.GetEffectiveSegments();

@@ -5,7 +5,22 @@ namespace Point2Point.JointMotion
 {
     public class JointMotionProfile
     {
-        public List<MotionProfileSegment> Segments { get; } = new List<MotionProfileSegment>();
+        public List<MotionProfileSegment> Segments { get; }
+
+        public JointMotionProfile()
+        {
+            Segments = new List<MotionProfileSegment>();
+        }
+
+        public JointMotionProfile(IEnumerable<MotionProfileSegment> segments)
+        {
+            Segments = segments.ToList();
+        }
+
+        public JointMotionProfile(params MotionProfileSegment[] segments)
+        {
+            Segments = segments.ToList();
+        }
 
         public void Append(MotionProfileSegment segment, params MotionProfileSegment[] segments)
             => Append(new List<MotionProfileSegment>() { segment }.Concat(segments));
