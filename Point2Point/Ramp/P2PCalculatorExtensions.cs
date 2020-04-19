@@ -1,6 +1,7 @@
-﻿using Point2Point.Calculation;
+﻿using Point2Point;
+using Shuttles.Base.Devices.Shuttles.Motion.Ramp;
 
-namespace Shuttles.Base.Devices.Shuttles.Motion.Ramp
+namespace Point2Point.Ramp
 {
     public static class P2PCalculatorExtensions
     {

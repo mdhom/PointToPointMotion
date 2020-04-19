@@ -1,4 +1,4 @@
-﻿namespace Point2Point.Calculation.JointMotionProfile
+﻿namespace Point2Point.JointMotionProfile
 {
     public class MotionProfileSegment
     {

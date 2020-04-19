@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using OxyPlot;
+using Point2Point.Ramp;
 
 namespace Point2Point.UI
 {

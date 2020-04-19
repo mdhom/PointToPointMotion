@@ -1,11 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Data;
 
-namespace Point2Point.Calculation.JointMotionProfile
+namespace Point2Point.JointMotionProfile
 {
     public class JointMotionProfile
     {
@@ -35,7 +31,7 @@ namespace Point2Point.Calculation.JointMotionProfile
                 .ToList();
 
             var effectiveSegments = new List<MotionProfileSegment>();
-            for (int i = 0; i < minVelocityPoints.Count - 1; i++)
+            for (var i = 0; i < minVelocityPoints.Count - 1; i++)
             {
                 var from = minVelocityPoints[i];
                 var to = minVelocityPoints[i + 1];
@@ -50,7 +46,7 @@ namespace Point2Point.Calculation.JointMotionProfile
             var effectiveSegments = GetEffectiveSegments();
         }
 
-        struct SegmentPoint
+        private struct SegmentPoint
         {
             public double Distance { get; set; }
             public double Velocity { get; set; }
