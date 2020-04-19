@@ -6,7 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 
-namespace Point2Point
+namespace Point2Point.UI
 {
     /// <summary>
     /// Interaction logic for App.xaml

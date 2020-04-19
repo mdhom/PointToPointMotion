@@ -1,7 +1,7 @@
-﻿<Application x:Class="Point2Point.App"
+﻿<Application x:Class="Point2Point.UI.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:local="clr-namespace:Point2Point"
+             xmlns:local="clr-namespace:Point2Point.UI"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
          

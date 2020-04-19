@@ -2,9 +2,8 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using OxyPlot;
-using Point2Point.Calculation;
 
-namespace Point2Point
+namespace Point2Point.UI
 {
     public class MainViewModel : INotifyPropertyChanged
     {
