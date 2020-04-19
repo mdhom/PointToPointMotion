@@ -39,6 +39,7 @@ namespace Point2Point.Calculation
 
         public void GetStatus(double t, out double j, out double a, out double v, out double s)
         {
+#pragma warning disable IDE0059 // Unnecessary assignments
             if (t <= t1)
             {
                 GetStatus1(t, out j, out a, out v, out s);
@@ -101,6 +102,7 @@ namespace Point2Point.Calculation
                     }
                 }
             }
+#pragma warning restore IDE0059 // Unnecessary assignments
         }
 
         private void GetStatus1(double t, out double j, out double a, out double v, out double s)
