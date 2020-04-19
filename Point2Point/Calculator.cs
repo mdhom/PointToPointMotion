@@ -5,8 +5,9 @@ namespace Point2Point
 #pragma warning disable IDE1006 // Naming Styles
     public class Calculator
     {
-        private readonly double a_max;
-        private readonly double j_max;
+        private readonly double jMax;
+        private readonly double aMax;
+        private readonly double vMax;
 
         public double t1 { get; }
         public double t2 { get; }
@@ -19,12 +20,13 @@ namespace Point2Point
 
         public Calculator(double s, double jMax, double aMax, double vMax)
         {
-            a_max = aMax;
-            j_max = jMax;
+            this.jMax = jMax;
+            this.aMax = aMax;
+            this.vMax = vMax;
 
-            TrajectoryInstanceCase = GetTrajectoryInstance(s, vMax);
+            TrajectoryInstanceCase = GetTrajectoryInstance(s);
 
-            CalculateTimes(s, vMax, TrajectoryInstanceCase, out var tj, out var ta, out var tv);
+            CalculateTimes(s, TrajectoryInstanceCase, out var tj, out var ta, out var tv);
 
             t1 = tj;
             t2 = ta;
@@ -103,10 +105,10 @@ namespace Point2Point
 
         private void GetStatus1(double t, out double j, out double a, out double v, out double s)
         {
-            j = j_max;
-            a = j_max * t;
-            v = 0.5 * j_max * t * t;
-            s = j_max / 6 * t * t * t;
+            j = jMax;
+            a = jMax * t;
+            v = 0.5 * jMax * t * t;
+            s = jMax / 6 * t * t * t;
         }
 
         private void GetStatus2(double t, double a1, double v1, double s1, out double j, out double a, out double v, out double s)
@@ -122,10 +124,10 @@ namespace Point2Point
             var tPhase = t - t2;
             var tPhase2 = tPhase * tPhase;
             var tPhase3 = tPhase2 * tPhase;
-            j = -j_max;
-            a = a2 - j_max * tPhase;
-            v = v2 + a2 * tPhase + 0.5 * -j_max * tPhase2;
-            s = s2 + v2 * tPhase + 0.5 * a2 * tPhase2 + (-j_max / 6) * tPhase3;
+            j = -jMax;
+            a = a2 - jMax * tPhase;
+            v = v2 + a2 * tPhase + 0.5 * -jMax * tPhase2;
+            s = s2 + v2 * tPhase + 0.5 * a2 * tPhase2 + (-jMax / 6) * tPhase3;
         }
 
         private void GetStatus4(double t, double v3, double s3, out double j, out double a, out double v, out double s)
@@ -142,10 +144,10 @@ namespace Point2Point
             var tPhase = t - t4;
             var tPhase2 = tPhase * tPhase;
             var tPhase3 = tPhase2 * tPhase;
-            j = -j_max;
-            a = -j_max * tPhase;
-            v = v4 + 0.5 * -j_max * tPhase2;
-            s = s4 + v4 * tPhase + (-j_max / 6) * tPhase3;
+            j = -jMax;
+            a = -jMax * tPhase;
+            v = v4 + 0.5 * -jMax * tPhase2;
+            s = s4 + v4 * tPhase + (-jMax / 6) * tPhase3;
         }
 
         private void GetStatus6(double t, double a5, double v5, double s5, out double j, out double a, out double v, out double s)
@@ -154,7 +156,7 @@ namespace Point2Point
             var tPhase2 = tPhase * tPhase;
             j = 0;
             a = a5;
-            v = v5 - a_max * tPhase;
+            v = v5 - aMax * tPhase;
             s = s5 + v5 * tPhase + 0.5 * a5 * tPhase2;
         }
 
@@ -163,13 +165,13 @@ namespace Point2Point
             var tPhase = t - t6;
             var tPhase2 = tPhase * tPhase;
             var tPhase3 = tPhase2 * tPhase;
-            j = j_max;
-            a = a6 + j_max * tPhase;
-            v = v6 + a6 * tPhase + 0.5 * j_max * tPhase2;
-            s = s6 + v6 * tPhase + 0.5 * a6 * tPhase2 + (j_max / 6) * tPhase3;
+            j = jMax;
+            a = a6 + jMax * tPhase;
+            v = v6 + a6 * tPhase + 0.5 * jMax * tPhase2;
+            s = s6 + v6 * tPhase + 0.5 * a6 * tPhase2 + (jMax / 6) * tPhase3;
         }
 
-        private int GetTrajectoryInstance(double s, double vMax)
+        private int GetTrajectoryInstance(double s)
         {
             // Case 1: a_max reached, v_max reached and constant for a time                             
             //          (s = 100,   j = 2000, a = 500,  vMax = 120)
@@ -184,16 +186,16 @@ namespace Point2Point
             // Case 6: a_max reached and constant for a time, v_max not reached                         
             //          (s = 15000, j = 2000, a = 500,  vMax = 20500)
 
-            var v_a = a_max * a_max / j_max;
-            var s_a = (2 * a_max * a_max * a_max) / (j_max * j_max);
+            var v_a = aMax * aMax / jMax;
+            var s_a = (2 * aMax * aMax * aMax) / (jMax * jMax);
             double s_v;
-            if (vMax * j_max < a_max * a_max)
+            if (vMax * jMax < aMax * aMax)
             {
-                s_v = vMax * 2 * Math.Sqrt(vMax / j_max);
+                s_v = vMax * 2 * Math.Sqrt(vMax / jMax);
             }
             else
             {
-                s_v = vMax * (vMax / a_max + a_max / j_max);
+                s_v = vMax * (vMax / aMax + aMax / jMax);
             }
 
             if (vMax < v_a && s > s_a)
@@ -226,30 +228,30 @@ namespace Point2Point
             }
         }
 
-        private void CalculateTimes(double s, double vMax, int trajectoryInstance, out double tj, out double ta, out double tv)
+        private void CalculateTimes(double s, int trajectoryInstance, out double tj, out double ta, out double tv)
         {
             switch (trajectoryInstance)
             {
                 case 1:
                 case 3:
-                    tj = Math.Sqrt(vMax / j_max);
+                    tj = Math.Sqrt(vMax / jMax);
                     ta = tj;
                     tv = s / vMax;
                     return;
                 case 2:
                 case 4:
-                    tj = ThirdRoot(s / (2 * j_max));
+                    tj = ThirdRoot(s / (2 * jMax));
                     ta = tj;
                     tv = 2 * tj;
                     return;
                 case 5:
-                    tj = a_max / j_max;
-                    ta = vMax / a_max;
+                    tj = aMax / jMax;
+                    ta = vMax / aMax;
                     tv = s / vMax;
                     return;
                 case 6:
-                    tj = a_max / j_max;
-                    ta = 0.5 * (Math.Sqrt((4 * s * j_max * j_max + a_max * a_max * a_max) / (a_max * j_max * j_max)) - a_max / j_max);
+                    tj = aMax / jMax;
+                    ta = 0.5 * (Math.Sqrt((4 * s * jMax * jMax + aMax * aMax * aMax) / (aMax * jMax * jMax)) - aMax / jMax);
                     tv = ta + tj;
                     return;
                 default:
