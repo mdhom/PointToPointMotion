@@ -1,4 +1,4 @@
-﻿namespace Point2Point.JointMotionProfile
+﻿namespace Point2Point.JointMotion
 {
     public class MotionProfileSegment
     {
@@ -15,6 +15,7 @@
             MaximumVelocity = maximumVelocity;
         }
 
-        public bool Contains(double distance) => Start <= distance && End > distance;
+        public bool Contains(double distance) 
+            => Start <= distance && End > distance;
     }
 }
