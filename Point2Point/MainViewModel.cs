@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using OxyPlot;
 using Point2Point.Calculation;
+using Shuttles.Base.Devices.Shuttles.Motion.Ramp;
 
 namespace Point2Point
 {
@@ -60,6 +61,7 @@ namespace Point2Point
         public List<DataPoint> DataA { get; private set; }
         public List<DataPoint> DataV { get; private set; }
         public List<DataPoint> DataS { get; private set; }
+        public List<DataPoint> DataBrakingDistance { get; private set; }
 
         public event PropertyChangedEventHandler PropertyChanged;
 
@@ -74,6 +76,7 @@ namespace Point2Point
             DataA = new List<DataPoint>();
             DataV = new List<DataPoint>();
             DataS = new List<DataPoint>();
+            DataBrakingDistance = new List<DataPoint>();
             ResultDuration = 0;
             ResultTrajectoryInstanceCase = 0;
             ResultDistance = 0;
@@ -89,6 +92,7 @@ namespace Point2Point
                     DataA.Add(new DataPoint(t, a));
                     DataV.Add(new DataPoint(t, v));
                     DataS.Add(new DataPoint(t, s));
+                    DataBrakingDistance.Add(new DataPoint(t, calc.GetBrakingDistance(t)));
                 }
 
                 ResultDuration = calc.t7;
@@ -104,6 +108,7 @@ namespace Point2Point
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DataA)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DataV)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DataS)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DataBrakingDistance)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ResultDuration)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ResultTrajectoryInstanceCase)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ResultDistance)));

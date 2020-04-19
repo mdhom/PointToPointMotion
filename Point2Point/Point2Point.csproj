@@ -71,6 +71,12 @@
       <DependentUpon>App.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Calculation\Ramp\P2PCalculatorExtensions.cs" />
+    <Compile Include="Calculation\Ramp\RampCalculationResult.cs" />
+    <Compile Include="Calculation\Ramp\RampCalculator.cs" />
+    <Compile Include="Calculation\Ramp\RampMotionParameter.cs" />
+    <Compile Include="Calculation\Ramp\RampMotionState.cs" />
+    <Compile Include="Calculation\Ramp\RampMotionStatus.cs" />
     <Compile Include="MainViewModel.cs" />
     <Compile Include="MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>

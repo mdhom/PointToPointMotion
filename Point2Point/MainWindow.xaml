@@ -47,11 +47,15 @@
                 <oxy:LinearAxis 
                     Position="Left" Title="Distance [mm]" Key="Distance" PositionTier="3"
                     AxislineColor="Orange" TextColor="Orange" TicklineColor="Orange" TitleColor="Orange"/>
+                <oxy:LinearAxis 
+                    Position="Left" Title="Brakingdistance [mm]" Key="Brakingdistance" PositionTier="4"
+                    AxislineColor="Gray" TextColor="Gray" TicklineColor="Gray" TitleColor="Gray"/>
             </oxy:Plot.Axes>
             <oxy:LineSeries ItemsSource="{Binding DataJ}" Title="Jerk" YAxisKey="Jerk" Color="Red" />
             <oxy:LineSeries ItemsSource="{Binding DataA}" Title="Acceleration" YAxisKey="Acceleration" Color="Green" />
             <oxy:LineSeries ItemsSource="{Binding DataV}" Title="Velocity" YAxisKey="Velocity" Color="Blue" />
             <oxy:LineSeries ItemsSource="{Binding DataS}" Title="Distance" YAxisKey="Distance" Color="Orange" />
+            <oxy:LineSeries ItemsSource="{Binding DataBrakingDistance}" Title="Brakingdistance" YAxisKey="Brakingdistance" Color="Gray" />
         </oxy:Plot>
     </Grid>
 </Window>
