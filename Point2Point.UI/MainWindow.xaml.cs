@@ -13,7 +13,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 
-namespace Point2Point
+namespace Point2Point.UI
 {
     /// <summary>
     /// Interaction logic for MainWindow.xaml

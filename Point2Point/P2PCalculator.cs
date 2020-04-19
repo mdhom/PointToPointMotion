@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Point2Point.Calculation
+namespace Point2Point
 {
 #pragma warning disable IDE1006 // Naming Styles
 #pragma warning disable IDE0059 // Unnecessary assignments

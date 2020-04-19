@@ -2,10 +2,8 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using OxyPlot;
-using Point2Point.Calculation;
-using Shuttles.Base.Devices.Shuttles.Motion.Ramp;
 
-namespace Point2Point
+namespace Point2Point.UI
 {
     public class MainViewModel : INotifyPropertyChanged
     {
