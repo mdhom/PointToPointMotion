@@ -25,6 +25,19 @@ namespace Point2Point.Calculation
             AccelerationMax = accelerationMax;
             VelocityMax = velocityMax;
 
+            if (jerkMax < 0)
+            {
+                throw new ArgumentOutOfRangeException($"Jerk must be positive");
+            }
+            else if (accelerationMax < 0)
+            {
+                throw new ArgumentOutOfRangeException($"Acceleration must be positive");
+            }
+            else if (velocityMax < 0)
+            {
+                throw new ArgumentOutOfRangeException($"Velocity must be positive");
+            }
+
             TrajectoryInstanceCase = GetTrajectoryInstance(s);
 
             CalculateTimes(s, TrajectoryInstanceCase, out var tj, out var ta, out var tv);
