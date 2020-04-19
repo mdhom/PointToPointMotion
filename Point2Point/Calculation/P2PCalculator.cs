@@ -3,11 +3,12 @@
 namespace Point2Point.Calculation
 {
 #pragma warning disable IDE1006 // Naming Styles
+#pragma warning disable IDE0059 // Unnecessary assignments
     public class P2PCalculator
     {
-        private readonly double jMax;
-        private readonly double aMax;
-        private readonly double vMax;
+        public double JerkMax { get; }
+        public double AccelerationMax { get; }
+        public double VelocityMax { get; }
 
         public double t1 { get; }
         public double t2 { get; }
@@ -18,11 +19,11 @@ namespace Point2Point.Calculation
         public double t7 { get; }
         public int TrajectoryInstanceCase { get; }
 
-        public P2PCalculator(double s, double jMax, double aMax, double vMax)
+        public P2PCalculator(double s, double jerkMax, double accelerationMax, double velocityMax)
         {
-            this.jMax = jMax;
-            this.aMax = aMax;
-            this.vMax = vMax;
+            JerkMax = jerkMax;
+            AccelerationMax = accelerationMax;
+            VelocityMax = velocityMax;
 
             TrajectoryInstanceCase = GetTrajectoryInstance(s);
 
@@ -39,7 +40,6 @@ namespace Point2Point.Calculation
 
         public void GetStatus(double t, out double j, out double a, out double v, out double s)
         {
-#pragma warning disable IDE0059 // Unnecessary assignments
             if (t <= t1)
             {
                 GetStatus1(t, out j, out a, out v, out s);
@@ -102,15 +102,14 @@ namespace Point2Point.Calculation
                     }
                 }
             }
-#pragma warning restore IDE0059 // Unnecessary assignments
         }
 
         private void GetStatus1(double t, out double j, out double a, out double v, out double s)
         {
-            j = jMax;
-            a = jMax * t;
-            v = 0.5 * jMax * t * t;
-            s = jMax / 6 * t * t * t;
+            j = JerkMax;
+            a = JerkMax * t;
+            v = 0.5 * JerkMax * t * t;
+            s = JerkMax / 6 * t * t * t;
         }
 
         private void GetStatus2(double t, double a1, double v1, double s1, out double j, out double a, out double v, out double s)
@@ -126,10 +125,10 @@ namespace Point2Point.Calculation
             var tPhase = t - t2;
             var tPhase2 = tPhase * tPhase;
             var tPhase3 = tPhase2 * tPhase;
-            j = -jMax;
-            a = a2 - jMax * tPhase;
-            v = v2 + a2 * tPhase + 0.5 * -jMax * tPhase2;
-            s = s2 + v2 * tPhase + 0.5 * a2 * tPhase2 + -jMax / 6 * tPhase3;
+            j = -JerkMax;
+            a = a2 - JerkMax * tPhase;
+            v = v2 + a2 * tPhase + 0.5 * -JerkMax * tPhase2;
+            s = s2 + v2 * tPhase + 0.5 * a2 * tPhase2 + -JerkMax / 6 * tPhase3;
         }
 
         private void GetStatus4(double t, double v3, double s3, out double j, out double a, out double v, out double s)
@@ -146,10 +145,10 @@ namespace Point2Point.Calculation
             var tPhase = t - t4;
             var tPhase2 = tPhase * tPhase;
             var tPhase3 = tPhase2 * tPhase;
-            j = -jMax;
-            a = -jMax * tPhase;
-            v = v4 + 0.5 * -jMax * tPhase2;
-            s = s4 + v4 * tPhase + -jMax / 6 * tPhase3;
+            j = -JerkMax;
+            a = -JerkMax * tPhase;
+            v = v4 + 0.5 * -JerkMax * tPhase2;
+            s = s4 + v4 * tPhase + -JerkMax / 6 * tPhase3;
         }
 
         private void GetStatus6(double t, double a5, double v5, double s5, out double j, out double a, out double v, out double s)
@@ -158,7 +157,7 @@ namespace Point2Point.Calculation
             var tPhase2 = tPhase * tPhase;
             j = 0;
             a = a5;
-            v = v5 - aMax * tPhase;
+            v = v5 - AccelerationMax * tPhase;
             s = s5 + v5 * tPhase + 0.5 * a5 * tPhase2;
         }
 
@@ -167,10 +166,10 @@ namespace Point2Point.Calculation
             var tPhase = t - t6;
             var tPhase2 = tPhase * tPhase;
             var tPhase3 = tPhase2 * tPhase;
-            j = jMax;
-            a = a6 + jMax * tPhase;
-            v = v6 + a6 * tPhase + 0.5 * jMax * tPhase2;
-            s = s6 + v6 * tPhase + 0.5 * a6 * tPhase2 + jMax / 6 * tPhase3;
+            j = JerkMax;
+            a = a6 + JerkMax * tPhase;
+            v = v6 + a6 * tPhase + 0.5 * JerkMax * tPhase2;
+            s = s6 + v6 * tPhase + 0.5 * a6 * tPhase2 + JerkMax / 6 * tPhase3;
         }
 
         private int GetTrajectoryInstance(double s)
@@ -188,39 +187,39 @@ namespace Point2Point.Calculation
             // Case 6: a_max reached and constant for a time, v_max not reached                         
             //          (s = 15000, j = 2000, a = 500,  vMax = 20500)
 
-            var v_a = aMax * aMax / jMax;
-            var s_a = 2 * aMax * aMax * aMax / (jMax * jMax);
+            var v_a = AccelerationMax * AccelerationMax / JerkMax;
+            var s_a = 2 * AccelerationMax * AccelerationMax * AccelerationMax / (JerkMax * JerkMax);
             double s_v;
-            if (vMax * jMax < aMax * aMax)
+            if (VelocityMax * JerkMax < AccelerationMax * AccelerationMax)
             {
-                s_v = vMax * 2 * Math.Sqrt(vMax / jMax);
+                s_v = VelocityMax * 2 * Math.Sqrt(VelocityMax / JerkMax);
             }
             else
             {
-                s_v = vMax * (vMax / aMax + aMax / jMax);
+                s_v = VelocityMax * (VelocityMax / AccelerationMax + AccelerationMax / JerkMax);
             }
 
-            if (vMax < v_a && s > s_a)
+            if (VelocityMax < v_a && s > s_a)
             {
                 return 1;
             }
-            else if (vMax > v_a && s < s_a)
+            else if (VelocityMax > v_a && s < s_a)
             {
                 return 2;
             }
-            else if (vMax < v_a && s < s_a && s > s_v)
+            else if (VelocityMax < v_a && s < s_a && s > s_v)
             {
                 return 3;
             }
-            else if (vMax < v_a && s < s_a && s < s_v)
+            else if (VelocityMax < v_a && s < s_a && s < s_v)
             {
                 return 4;
             }
-            else if (vMax > v_a && s > s_a && s > s_v)
+            else if (VelocityMax > v_a && s > s_a && s > s_v)
             {
                 return 5;
             }
-            else if (vMax > v_a && s > s_a && s < s_v)
+            else if (VelocityMax > v_a && s > s_a && s < s_v)
             {
                 return 6;
             }
@@ -236,24 +235,24 @@ namespace Point2Point.Calculation
             {
                 case 1:
                 case 3:
-                    tj = Math.Sqrt(vMax / jMax);
+                    tj = Math.Sqrt(VelocityMax / JerkMax);
                     ta = tj;
-                    tv = s / vMax;
+                    tv = s / VelocityMax;
                     return;
                 case 2:
                 case 4:
-                    tj = ThirdRoot(s / (2 * jMax));
+                    tj = ThirdRoot(s / (2 * JerkMax));
                     ta = tj;
                     tv = 2 * tj;
                     return;
                 case 5:
-                    tj = aMax / jMax;
-                    ta = vMax / aMax;
-                    tv = s / vMax;
+                    tj = AccelerationMax / JerkMax;
+                    ta = VelocityMax / AccelerationMax;
+                    tv = s / VelocityMax;
                     return;
                 case 6:
-                    tj = aMax / jMax;
-                    ta = 0.5 * (Math.Sqrt((4 * s * jMax * jMax + aMax * aMax * aMax) / (aMax * jMax * jMax)) - aMax / jMax);
+                    tj = AccelerationMax / JerkMax;
+                    ta = 0.5 * (Math.Sqrt((4 * s * JerkMax * JerkMax + AccelerationMax * AccelerationMax * AccelerationMax) / (AccelerationMax * JerkMax * JerkMax)) - AccelerationMax / JerkMax);
                     tv = ta + tj;
                     return;
                 default:
@@ -273,4 +272,5 @@ namespace Point2Point.Calculation
         }
     }
 #pragma warning restore IDE1006 // Naming Styles
+#pragma warning restore IDE0059 // Unnecessary assignments
 }
