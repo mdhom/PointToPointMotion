@@ -283,6 +283,8 @@ namespace Point2Point.Calculation
             GetStatus(t7, out _, out _, out _, out var s);
             return s;
         }
+
+        public double GetTotalTime() => t7;
     }
 #pragma warning restore IDE1006 // Naming Styles
 #pragma warning restore IDE0059 // Unnecessary assignments
