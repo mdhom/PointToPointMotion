@@ -54,6 +54,7 @@ namespace Point2Point
 
         public double ResultDuration { get; private set; }
         public double ResultDistance { get; private set; }
+        public double ResultMaxReachedVelocity { get; private set; }
         public int ResultTrajectoryInstanceCase { get; private set; }
 
         public List<DataPoint> DataJ { get; private set; }
@@ -77,6 +78,7 @@ namespace Point2Point
             ResultDuration = 0;
             ResultTrajectoryInstanceCase = 0;
             ResultDistance = 0;
+            ResultMaxReachedVelocity = 0;
 
             try
             {
@@ -94,6 +96,7 @@ namespace Point2Point
                 ResultDuration = calc.t7;
                 ResultTrajectoryInstanceCase = calc.TrajectoryInstanceCase;
                 ResultDistance = calc.GetTotalDistance();
+                ResultMaxReachedVelocity = calc.CalculateMaximumReachedVelocity();
             }
             catch (Exception ex)
             {
@@ -107,6 +110,7 @@ namespace Point2Point
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ResultDuration)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ResultTrajectoryInstanceCase)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ResultDistance)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ResultMaxReachedVelocity)));
         }
     }
 }
