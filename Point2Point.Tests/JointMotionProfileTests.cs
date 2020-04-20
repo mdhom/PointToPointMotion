@@ -16,7 +16,7 @@ namespace Point2Point.Tests
 
             var parameters = new P2PParameters(2000, 500, 1000);
 
-            var jointMotion = new JointMotionProfile(constraints, parameters);
+            var jointMotion = JointMotionProfile.CalculateProfile(constraints, parameters);
         }
     }
 }

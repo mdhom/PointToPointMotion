@@ -112,8 +112,7 @@ namespace Point2Point.UI
 
         private static void DrawJointMotionProfile(ConstraintsCollection constraintsCollection, PlotModel plotModel)
         {
-            var jointProfile = new JointMotionProfile(constraintsCollection, new P2PParameters(2000, 500, 1000));
-            var profilePoints = jointProfile.CalculateProfile();
+            var profilePoints = JointMotionProfile.CalculateProfile(constraintsCollection, new P2PParameters(2000, 500, 1000));
 
             var jointSerie = new LineSeries()
             {
