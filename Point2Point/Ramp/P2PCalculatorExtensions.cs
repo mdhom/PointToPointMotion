@@ -1,7 +1,7 @@
 ﻿using Point2Point;
 using Shuttles.Base.Devices.Shuttles.Motion.Ramp;
 
-namespace Point2Point.Ramp
+namespace Point2Point   // using "wron" namespace here for making extensions avaiable at ease
 {
     public static class P2PCalculatorExtensions
     {
