@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.InteropServices;
 
 namespace Point2Point.JointMotion
 {
@@ -16,7 +15,7 @@ namespace Point2Point.JointMotion
         }
 
         public ConstraintsCollection(VelocityConstraint constraint, params VelocityConstraint[] constraints)
-            : base (new List<VelocityConstraint>() { constraint }.Concat(constraints))
+            : base(new List<VelocityConstraint>() { constraint }.Concat(constraints))
         {
         }
 
