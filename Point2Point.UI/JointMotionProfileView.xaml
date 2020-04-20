@@ -17,15 +17,8 @@
         <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
             <Button Content="Random" Command="{Binding RandomCommand}" />
         </StackPanel>
-        
-        <oxy:Plot Title="Joint motion" Grid.Row="1">
-            <oxy:Plot.Axes>
-                <oxy:LinearAxis Position="Left"  Minimum="0" />
-            </oxy:Plot.Axes>
-            <oxy:LineSeries ItemsSource="{Binding DataRaw0}" Title="0" StrokeThickness="5" />
-            <oxy:LineSeries ItemsSource="{Binding DataRaw1}" Title="1" StrokeThickness="5" />
-            <oxy:LineSeries ItemsSource="{Binding DataRaw2}" Title="2" StrokeThickness="5" />
-            <oxy:LineSeries ItemsSource="{Binding DataEffective}" Title="Effective" />
-        </oxy:Plot>
+
+        <oxy:PlotView Grid.Row="1" Model="{Binding PlotModel}">
+        </oxy:PlotView>
     </Grid>
 </UserControl>
