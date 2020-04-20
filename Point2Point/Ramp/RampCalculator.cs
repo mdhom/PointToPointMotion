@@ -25,10 +25,11 @@ namespace Shuttles.Base.Devices.Shuttles.Motion.Ramp
 
         public RampCalculationResult Calculate(double targetVelocity)
         {
-            var result = new RampCalculationResult();
-
-            //1. Bestimmung ob Bremsen oder Beschleuningen
-            result.MotionState = targetVelocity < InitialVelocity ? RampMotionState.Brake : RampMotionState.Accelerate;
+            var result = new RampCalculationResult
+            {
+                //1. Bestimmung ob Bremsen oder Beschleuningen
+                MotionState = targetVelocity < InitialVelocity ? RampMotionState.Brake : RampMotionState.Accelerate
+            };
 
             var decMax = MotionParameter.MaximumDecceleration;
             var jPos = MotionParameter.PositiveJerk;

@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Point2Point
+﻿namespace Point2Point
 {
     public class P2PParameters
     {

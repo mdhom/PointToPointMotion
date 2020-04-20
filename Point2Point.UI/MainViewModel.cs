@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using OxyPlot;
-
-namespace Point2Point.UI
+﻿namespace Point2Point.UI
 {
     public class MainViewModel
     {

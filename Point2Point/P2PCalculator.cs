@@ -321,40 +321,6 @@ namespace Point2Point
             calc.GetStatus(calc.t3, out _, out _, out _, out var s);
             return s;
         }
-
-        private int DeterminePhase(double j, double a)
-        {
-            if (j > 0 && a > 0)
-            {
-                return 1;
-            }
-            else if (j == 0 && a > 0)
-            {
-                return 2;
-            }
-            else if (j < 0 && a > 0)
-            {
-                return 3;
-            }
-            else if (j == 0 && a == 0)
-            {
-                return 4;
-            }
-            else if (j < 0 && a < 0)
-            {
-                return 5;
-            }
-            else if (j == 0 && a < 0)
-            {
-                return 6;
-            }
-            else if (j > 0 && a < 0)
-            {
-                return 7;
-            }
-
-            throw new ArgumentException($"No phase for given jerk and acceleration found");
-        }
     }
 #pragma warning restore IDE1006 // Naming Styles
 #pragma warning restore IDE0059 // Unnecessary assignments
