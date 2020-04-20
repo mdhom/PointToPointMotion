@@ -219,7 +219,7 @@ namespace Point2Point
                 s_v = VelocityMax * (VelocityMax / AccelerationMax + AccelerationMax / JerkMax);
             }
 
-            if (VelocityMax < v_a && s > s_a)
+            if (VelocityMax <= v_a && s > s_a)
             {
                 return 1;
             }
@@ -245,7 +245,7 @@ namespace Point2Point
             }
             else
             {
-                throw new InvalidOperationException("Undetected case");
+                return int.MinValue;
             }
         }
 
@@ -299,10 +299,10 @@ namespace Point2Point
 
         /// <summary>
         /// Calculates maximum reachable velocity within the given distance.
-        /// Constant (or no) motion (a=0) required as initial situation. 
-        /// Assumption: reached velocity will be constant (a=0)
+        /// Assumptions: a0=0, v0=0 -> a1=0, v1=??
         /// </summary>
         /// <param name="distance"></param>
+        /// <param name="parameters">Parameters that define motion behaviour</param>
         /// <returns></returns>
         public static double CalculateMaximumReachableVelocity(double distance, P2PParameters parameters)
         {
@@ -312,7 +312,14 @@ namespace Point2Point
             return calc.CalculateMaximumReachedVelocity();
         }
 
-        public static double GetDistanceForFullAcceleration(double vMax, P2PParameters parameters)
+        /// <summary>
+        /// Calculates the distance needed to reach the given vMax.
+        /// Assumptions: a0=0, v0=0 -> a1=0, v1=vMax
+        /// </summary>
+        /// <param name="vMax">Maximum velocity to reach</param>
+        /// <param name="parameters">Parameters that define motion behaviour</param>
+        /// <returns></returns>
+        public static double CalculateDistanceForAcceleration(double vMax, P2PParameters parameters)
         {
             // uses assumption that profile is always symetrical, so doubling the distance
             // should make sure, that phase 4 (constant velocity) is reached

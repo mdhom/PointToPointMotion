@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Windows.Data;
 using System.Windows.Input;
 using OxyPlot;
 using OxyPlot.Axes;
@@ -18,7 +19,17 @@ namespace Point2Point.UI
             set => ChangeProperty(value, ref _plotModel);
         }
 
+        private bool _drawRawSeries = true;
+        public bool DrawRawSeries
+        {
+            get => _drawRawSeries;
+            set => ChangeProperty(value, ref _drawRawSeries, () => Update(_randomConstraints));
+        }
+
         public ICommand RandomCommand { get; }
+        public ICommand RecalcCommand { get; }
+
+        private ConstraintsCollection _randomConstraints;
 
         public JointMotionProfileViewModel()
         {
@@ -36,13 +47,26 @@ namespace Point2Point.UI
                 {
                     segments.Add(new VelocityConstraint(random.NextDouble(0, 5000), random.NextDouble(200, 1000), random.Next(100, 1000)));
                 }
-                var joint = new ConstraintsCollection(segments);
-                Update(joint);
+                _randomConstraints = new ConstraintsCollection(segments);
+                Update(_randomConstraints);
+            });
+
+            RecalcCommand = new RelayCommand(() =>
+            {
+                if (_randomConstraints != null)
+                {
+                    Update(_randomConstraints);
+                }
             });
         }
 
         private void Update(ConstraintsCollection constraintsCollection)
         {
+            if (constraintsCollection == null)
+            {
+                return;
+            }
+
             var plotModel = new PlotModel()
             {
                 Title = "Joint motion"
@@ -55,7 +79,10 @@ namespace Point2Point.UI
                 AbsoluteMinimum = 0
             });
 
-            DrawRawConstraints(constraintsCollection, plotModel);
+            if (DrawRawSeries)
+            {
+                DrawRawConstraints(constraintsCollection, plotModel);
+            }
             
             DrawEffectiveConstraints(constraintsCollection, plotModel);
             
