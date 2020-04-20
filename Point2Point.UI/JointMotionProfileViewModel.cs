@@ -1,8 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Input;
 using OxyPlot;
 using OxyPlot.Axes;
@@ -25,29 +22,27 @@ namespace Point2Point.UI
 
         public JointMotionProfileViewModel()
         {
-            Update(new JointMotionProfile(
-                new MotionProfileSegment(0, 1000, 500),
-                new MotionProfileSegment(1000, 1000, 400),
-                new MotionProfileSegment(500, 1000, 200)));
+            Update(new ConstraintsCollection(
+                new VelocityConstraint(0, 1000, 500),
+                new VelocityConstraint(1000, 1000, 400),
+                new VelocityConstraint(500, 1000, 200)));
 
             RandomCommand = new RelayCommand(() =>
             {
                 var random = new Random((int)DateTime.Now.Ticks);
 
-                var segments = new List<MotionProfileSegment>() { new MotionProfileSegment(0, random.NextDouble(200, 1000), random.Next(100, 1000)) };
-                for (int i = 0; i < 15; i++)
+                var segments = new List<VelocityConstraint>() { new VelocityConstraint(0, random.NextDouble(200, 1000), random.Next(100, 1000)) };
+                for (var i = 0; i < 15; i++)
                 {
-                    segments.Add(new MotionProfileSegment(random.NextDouble(0, 5000), random.NextDouble(200, 1000), random.Next(100, 1000)));
+                    segments.Add(new VelocityConstraint(random.NextDouble(0, 5000), random.NextDouble(200, 1000), random.Next(100, 1000)));
                 }
-                var joint = new JointMotionProfile(segments);
+                var joint = new ConstraintsCollection(segments);
                 Update(joint);
             });
         }
 
-        private void Update(JointMotionProfile joint)
+        private void Update(ConstraintsCollection constraintsCollection)
         {
-            var effectiveSegments = joint.GetEffectiveSegments();
-
             var plotModel = new PlotModel()
             {
                 Title = "Joint motion"
@@ -60,8 +55,19 @@ namespace Point2Point.UI
                 AbsoluteMinimum = 0
             });
 
+            DrawRawConstraints(constraintsCollection, plotModel);
+            
+            DrawEffectiveConstraints(constraintsCollection, plotModel);
+            
+            DrawJointMotionProfile(constraintsCollection, plotModel);
+
+            PlotModel = plotModel;
+        }
+
+        private static void DrawRawConstraints(ConstraintsCollection constraintsCollection, PlotModel plotModel)
+        {
             var index = 0;
-            foreach (var segment in joint.Segments)
+            foreach (var segment in constraintsCollection)
             {
                 var lineSerie = new LineSeries()
                 {
@@ -75,20 +81,46 @@ namespace Point2Point.UI
                 plotModel.Series.Add(lineSerie);
                 index++;
             }
+        }
+
+        private static void DrawJointMotionProfile(ConstraintsCollection constraintsCollection, PlotModel plotModel)
+        {
+            var jointProfile = new JointMotionProfile(constraintsCollection, new P2PParameters(2000, 500, 1000));
+            var profilePoints = jointProfile.CalculateProfile();
+
+            var jointSerie = new LineSeries()
+            {
+                Title = "JointProfile",
+                Color = OxyColors.Black,
+                ItemsSource = new List<DataPoint>()
+            };
+
+            foreach (var point in profilePoints)
+            {
+                (jointSerie.ItemsSource as List<DataPoint>).Add(new DataPoint(point.Distance, point.Velocity));
+            }
+
+            plotModel.Series.Add(jointSerie);
+        }
+
+        private static void DrawEffectiveConstraints(ConstraintsCollection constraintsCollection, PlotModel plotModel)
+        {
+            var effectiveSegments = constraintsCollection.GetEffectiveConstraints();
 
             var effectiveSerie = new LineSeries()
             {
                 Title = $"Effective",
+                Color = OxyColors.Red,
                 ItemsSource = new List<DataPoint>()
             };
+
             foreach (var segment in effectiveSegments)
             {
                 (effectiveSerie.ItemsSource as List<DataPoint>).Add(new DataPoint(segment.Start, segment.MaximumVelocity));
                 (effectiveSerie.ItemsSource as List<DataPoint>).Add(new DataPoint(segment.End, segment.MaximumVelocity));
             }
-            plotModel.Series.Add(effectiveSerie);
 
-            PlotModel = plotModel;
+            plotModel.Series.Add(effectiveSerie);
         }
     }
 }

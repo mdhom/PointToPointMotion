@@ -1,6 +1,6 @@
 ﻿namespace Point2Point.JointMotion
 {
-    public class MotionProfileSegment
+    public class VelocityConstraint
     {
         public double Start { get; set; }
         public double Length { get; }
@@ -8,7 +8,7 @@
 
         public double End => Start + Length;
 
-        public MotionProfileSegment(double start, double length, double maximumVelocity)
+        public VelocityConstraint(double start, double length, double maximumVelocity)
         {
             Start = start;
             Length = length;

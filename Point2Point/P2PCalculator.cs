@@ -6,9 +6,11 @@ namespace Point2Point
 #pragma warning disable IDE0059 // Unnecessary assignments
     public class P2PCalculator
     {
-        public double JerkMax { get; }
-        public double AccelerationMax { get; }
-        public double VelocityMax { get; }
+        public P2PParameters Parameters { get; }
+
+        public double JerkMax => Parameters.JerkMax;
+        public double AccelerationMax => Parameters.AccelerationMax;
+        public double VelocityMax => Parameters.VelocityMax;
 
         public double t1 { get; }
         public double t2 { get; }
@@ -21,21 +23,19 @@ namespace Point2Point
 
         public double TotalTime => t7;
 
-        public P2PCalculator(double s, double jerkMax, double accelerationMax, double velocityMax)
+        public P2PCalculator(double s, P2PParameters parameters)
         {
-            JerkMax = jerkMax;
-            AccelerationMax = accelerationMax;
-            VelocityMax = velocityMax;
+            Parameters = parameters;
 
-            if (jerkMax < 0)
+            if (JerkMax < 0)
             {
                 throw new ArgumentOutOfRangeException($"Jerk must be positive");
             }
-            else if (accelerationMax < 0)
+            else if (AccelerationMax < 0)
             {
                 throw new ArgumentOutOfRangeException($"Acceleration must be positive");
             }
-            else if (velocityMax < 0)
+            else if (VelocityMax < 0)
             {
                 throw new ArgumentOutOfRangeException($"Velocity must be positive");
             }
@@ -51,6 +51,11 @@ namespace Point2Point
             t5 = tv + tj;
             t6 = tv + ta;
             t7 = tv + tj + ta;
+        }
+
+        public P2PCalculator(double s, double jerkMax, double accelerationMax, double velocityMax)
+            : this(s, new P2PParameters(jerkMax, accelerationMax, velocityMax))
+        {
         }
 
         public void GetStatus(double t, out double j, out double a, out double v, out double s)
@@ -290,6 +295,65 @@ namespace Point2Point
         {
             GetStatus(t3, out _, out _, out var v, out _);
             return v;
+        }
+
+        /// <summary>
+        /// Calculates maximum reachable velocity within the given distance.
+        /// Constant (or no) motion (a=0) required as initial situation. 
+        /// Assumption: reached velocity will be constant (a=0)
+        /// </summary>
+        /// <param name="distance"></param>
+        /// <returns></returns>
+        public static double CalculateMaximumReachableVelocity(double distance, P2PParameters parameters)
+        {
+            // uses assumption that profile is always symetrical, so doubling the distance
+            // should make sure, that phase 4 (constant velocity) is reached
+            var calc = new P2PCalculator(distance * 2, parameters);
+            return calc.CalculateMaximumReachedVelocity();
+        }
+
+        public static double GetDistanceForFullAcceleration(double vMax, P2PParameters parameters)
+        {
+            // uses assumption that profile is always symetrical, so doubling the distance
+            // should make sure, that phase 4 (constant velocity) is reached
+            var parametersModified = new P2PParameters(parameters.JerkMax, parameters.AccelerationMax, vMax);
+            var calc = new P2PCalculator(double.MaxValue, parametersModified);
+            calc.GetStatus(calc.t3, out _, out _, out _, out var s);
+            return s;
+        }
+
+        private int DeterminePhase(double j, double a)
+        {
+            if (j > 0 && a > 0)
+            {
+                return 1;
+            }
+            else if (j == 0 && a > 0)
+            {
+                return 2;
+            }
+            else if (j < 0 && a > 0)
+            {
+                return 3;
+            }
+            else if (j == 0 && a == 0)
+            {
+                return 4;
+            }
+            else if (j < 0 && a < 0)
+            {
+                return 5;
+            }
+            else if (j == 0 && a < 0)
+            {
+                return 6;
+            }
+            else if (j > 0 && a < 0)
+            {
+                return 7;
+            }
+
+            throw new ArgumentException($"No phase for given jerk and acceleration found");
         }
     }
 #pragma warning restore IDE1006 // Naming Styles

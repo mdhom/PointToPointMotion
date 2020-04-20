@@ -1,103 +1,50 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace Point2Point.JointMotion
 {
-    public class JointMotionProfile
+    public partial class JointMotionProfile
     {
-        public List<MotionProfileSegment> Segments { get; }
+        public List<VelocityConstraint> EffectiveConstraints { get; }
+        public P2PParameters Parameters { get; }
 
-        public JointMotionProfile()
+        public JointMotionProfile(ConstraintsCollection constraints, P2PParameters parameters)
         {
-            Segments = new List<MotionProfileSegment>();
+            EffectiveConstraints = constraints.GetEffectiveConstraints();
+            Parameters = parameters;
         }
 
-        public JointMotionProfile(IEnumerable<MotionProfileSegment> segments)
+        public List<VelocityPoint> CalculateProfile()
         {
-            Segments = segments.ToList();
-        }
-
-        public JointMotionProfile(params MotionProfileSegment[] segments)
-        {
-            Segments = segments.ToList();
-        }
-
-        public void Append(MotionProfileSegment segment, params MotionProfileSegment[] segments)
-            => Append(new List<MotionProfileSegment>() { segment }.Concat(segments));
-
-        public void Append(IEnumerable<MotionProfileSegment> segments)
-        {
-            foreach (var segment in segments)
+            var unreachedConstraints = new List<VelocityConstraint>();
+            var velocityPoints = new List<VelocityPoint>()
             {
-                segment.Start = Segments.Any() ? Segments.Max(s => s.End) : 0;
-                Segments.Add(segment);
-            }
+                new VelocityPoint(0,0)
+            };
 
-            // UpdateProfile();
-        }
-
-        public void Insert(MotionProfileSegment segment)
-        {
-            Segments.Add(segment);
-        }
-
-        public List<MotionProfileSegment> GetEffectiveSegments()
-        {
-            var distanceValues = Segments
-                .SelectMany(s => new[] { s.Start, s.End })
-                .Distinct()
-                .OrderBy(d => d)
-                .ToList();
-
-            var minPoints = new List<SegmentPoint>();
-            foreach (var distance in distanceValues)
+            for (var i = 0; i < EffectiveConstraints.Count; i++)
             {
-                var containingSegments = Segments.Where(s => s.Contains(distance));
-                if (containingSegments.Any())
+                var constraint = EffectiveConstraints[i];
+                var availableDistance = unreachedConstraints.Sum(s => s.Length) + constraint.Length;
+                var maxReachableVelocity = P2PCalculator.CalculateMaximumReachableVelocity(availableDistance, Parameters);
+                var velocityDifferenceBetweenConstraints = Math.Abs(constraint.MaximumVelocity - velocityPoints.Last().Velocity);
+                if (maxReachableVelocity > velocityDifferenceBetweenConstraints)
                 {
-                    var minAllowedVelocity = containingSegments.Min(s => s.MaximumVelocity);
-                    minPoints.Add(new SegmentPoint(distance, minAllowedVelocity));
-                }
-            }
-
-            var effectiveSegments = new List<MotionProfileSegment>();
-            for (var i = 0; i < minPoints.Count; i++)
-            {
-                var from = minPoints[i];
-                var endIndex = minPoints.FindIndex(i + 1, sp => sp.Velocity != from.Velocity);
-                if (endIndex == -1)
-                {
-                    // segment with other velocity further found
-                    effectiveSegments.Add(new MotionProfileSegment(from.Distance, Segments.Max(s => s.End) - from.Distance, from.Velocity));
-                    return effectiveSegments;
+                    // maximum allowed velocity can be reached
+                    var distanceForFullAcc = P2PCalculator.GetDistanceForFullAcceleration(velocityDifferenceBetweenConstraints, Parameters);
+                    var startDistance = velocityPoints.Max(v => v.Distance);
+                    velocityPoints.Add(new VelocityPoint(startDistance + distanceForFullAcc, constraint.MaximumVelocity));
+                    velocityPoints.Add(new VelocityPoint(startDistance + constraint.Length, constraint.MaximumVelocity));
+                    unreachedConstraints.Clear();
                 }
                 else
                 {
-                    var to = minPoints[endIndex];
-                    effectiveSegments.Add(new MotionProfileSegment(from.Distance, to.Distance - from.Distance, from.Velocity));
+                    unreachedConstraints.Add(constraint);
                 }
-
-                i = endIndex - 1;
             }
 
-            return effectiveSegments;
-        }
-
-        private void UpdateProfile()
-        {
-            var effectiveSegments = GetEffectiveSegments();
-        }
-
-        private struct SegmentPoint
-        {
-            public double Distance { get; set; }
-            public double Velocity { get; set; }
-
-            public SegmentPoint(double distance, double velocity)
-            {
-                Distance = distance;
-                Velocity = velocity;
-            }
+            return velocityPoints;
         }
     }
 }
