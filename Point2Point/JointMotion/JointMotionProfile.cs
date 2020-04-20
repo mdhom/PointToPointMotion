@@ -119,8 +119,6 @@ namespace Point2Point.JointMotion
         /// <summary>
         /// Removes the given constraint and adds its length to the next constraint.
         /// </summary>
-        /// <param name="constraint"></param>
-        /// <param name="index"></param>
         private void MergeWithNextConstraint(VelocityConstraint constraint, ref int index)
         {
             _effectiveConstraints.RemoveAt(index);
@@ -130,6 +128,10 @@ namespace Point2Point.JointMotion
             index--;
         }
 
+        /// <summary>
+        /// Removes the given constraint and adds its length to the previous constraint 
+        /// => the previous constraint is longer now. Enables earlier braking.
+        /// </summary>
         private void MergeWithPreviousConstraint(VelocityConstraint constraint, List<VelocityPoint> velocityPoints, ref int index)
         {
             _effectiveConstraints.RemoveAt(index);
