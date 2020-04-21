@@ -9,20 +9,22 @@ namespace Point2Point
     {
         private readonly double _jMax;
         private readonly double _aMax;
+        private readonly double _v0;
 
-        private P2PRamp(double jMax, double aMax)
+        private P2PRamp(double jMax, double aMax, double v0)
         {
             _jMax = jMax;
             _aMax = aMax;
+            _v0 = v0;
         }
 
         public static double GetReachableVelocity(double distance, double v0, double jMax, double aMax)
         {
-            var calculator = new P2PRamp(jMax, aMax);
-            return calculator.GetReachableVelocity(distance, v0);
+            var calculator = new P2PRamp(jMax, aMax, v0);
+            return calculator.GetReachableVelocity(distance);
         }
 
-        private double GetReachableVelocity(double distance, double v0)
+        private double GetReachableVelocity(double distance)
         {
             // Phase 1: positive jerk, lineary increasing acceleration, quadratic increasing velocity
             // Phase 2: zero jerk, constant acceleration, lineary increasing velocity
@@ -40,24 +42,24 @@ namespace Point2Point
             var dForAMax = _aMax / _jMax;
             var d1 = dForAMax;
             var d2 = 0.0;
-            CalculateEndValues(v0, d1, d2, _jMax, out _, out var s3);
+            CalculateEndValues(d1, d2, _jMax, out _, out var s3);
 
             if (s3 < distance)
             {
                 // The previously calculated profile does not even cover the given distance
                 // => Phase 2 with constant acceleration is necessary
                 // => d2 > 0
-                (d1, d2) = CalculateTimesWithConstantA(distance, v0, dForAMax);
+                (d1, d2) = CalculateTimesWithConstantA(distance, dForAMax);
             }
             else if  (s3 > distance)
             {
                 // The previously calculated profile overshoots the given distance.
                 // To stay within the given distance, aMax obviously must not be reached.
                 // => d1 < dForAMax!!
-                (d1, d2) = CalculateTimesWithANotReached(distance, v0);
+                (d1, d2) = CalculateTimesWithANotReached(distance);
             }
 
-            CalculateEndValues(v0, d1, d2, _jMax, out var v3, out s3);
+            CalculateEndValues(d1, d2, _jMax, out var v3, out s3);
 
             if (Math.Abs(s3 - distance) > 1e-8)
             {
@@ -67,7 +69,7 @@ namespace Point2Point
             return v3;
         }
 
-        private (double d1, double d2) CalculateTimesWithANotReached(double distance, double v0)
+        private (double d1, double d2) CalculateTimesWithANotReached(double distance)
         {
             var j_2 = _jMax * _jMax;
             var j_3 = j_2 * _jMax;
@@ -75,10 +77,10 @@ namespace Point2Point
 
             // Wolfram Alphas output splitted in single parts for better readability
             // https://www.wolframalpha.com/input/?i=2vx%2Bjx%5E3-s%3D0
-            var p1 = Math.Sqrt(27 * j_4 * distance * distance + 32 * j_3 * v0 * v0 * v0);
+            var p1 = Math.Sqrt(27 * j_4 * distance * distance + 32 * j_3 * _v0 * _v0 * _v0);
             var p2 = CubeRoot.Get(9 * j_2 * distance + Math.Sqrt(3) * p1);
             var p3 = CubeRoot.Get(2) * Math.Pow(3, 2.0 / 3) * _jMax;
-            var p4 = 2 * CubeRoot.Get(2.0 / 3) * v0;
+            var p4 = 2 * CubeRoot.Get(2.0 / 3) * _v0;
             var p5 = CubeRoot.Get(9 * j_2 * distance + Math.Sqrt(3) * p1);
 
             var d1 = p2 / p3 - p4 / p5;
@@ -86,12 +88,12 @@ namespace Point2Point
             return (d1, 0);
         }
 
-        private (double d1, double d2) CalculateTimesWithConstantA(double distance, double v0, double d1)
+        private (double d1, double d2) CalculateTimesWithConstantA(double distance, double d1)
         {
             // solving quadratic equation using "Mitternachtsformel"
             var mnfA = 0.5 * _jMax * d1;
-            var mnfB = v0 + 1.5 * _jMax * d1 * d1;
-            var mnfC = 2 * v0 * d1 + _jMax * d1 * d1 * d1 - distance;
+            var mnfB = _v0 + 1.5 * _jMax * d1 * d1;
+            var mnfC = 2 * _v0 * d1 + _jMax * d1 * d1 * d1 - distance;
 
             // "Mitternachtsformel" provides two results
             var d2_1 = (-mnfB + Math.Sqrt(mnfB * mnfB - 4 * mnfA * mnfC)) / (2 * mnfA);
@@ -103,9 +105,9 @@ namespace Point2Point
             return (d1, d2);
         }
 
-        private static void CalculateEndValues(double v0, double d1, double d2, double jMax, out double v3, out double s3)
+        private void CalculateEndValues(double d1, double d2, double jMax, out double v3, out double s3)
         {
-            GetStatus(d1 + d2 + d1, v0, d1, d2, jMax, out _, out _, out v3, out s3);
+            GetStatus(d1 + d2 + d1, _v0, d1, d2, jMax, out _, out _, out v3, out s3);
         }
 
         #region Calculations from P2PCalculator, extended by v0
