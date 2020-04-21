@@ -6,19 +6,100 @@ namespace Point2Point.JointMotion
 {
     public class JointMotionProfile
     {
-        private readonly List<VelocityConstraint> _effectiveConstraints;
-        private readonly P2PParameters _parameters;
+        private const double _epsilon = 0.000000001;
 
-        private JointMotionProfile(ConstraintsCollection constraints, P2PParameters parameters)
+        private readonly P2PParameters _parameters;
+        public List<VelocityConstraint> EffectiveConstraints { get; }
+        public List<VelocityPoint> VelocityPoints { get; }
+        public List<double> TimesAtVelocityPoints { get; }
+
+        public double TotalDuration => TimesAtVelocityPoints.Last();
+
+        public JointMotionProfile(ConstraintsCollection constraints, P2PParameters parameters)
         {
-            _effectiveConstraints = constraints.GetEffectiveConstraints();
+            EffectiveConstraints = constraints.GetEffectiveConstraints();
             _parameters = parameters;
+
+            VelocityPoints = CalculateProfile();
+
+            TimesAtVelocityPoints = CalculateTimesAtVelocityPoints();
         }
 
-        public static List<VelocityPoint> CalculateProfile(ConstraintsCollection constraints, P2PParameters parameters)
+        public void GetStatus(double t, out double v, out double s)
         {
-            var profile = new JointMotionProfile(constraints, parameters);
-            return profile.CalculateProfile();
+            try
+            {
+                if (t > TimesAtVelocityPoints.Last())
+                {
+                    v = 0;
+                    s = 0;
+                    return;
+                }
+
+                var pointToIndex = TimesAtVelocityPoints.FindIndex(tAtPoint => tAtPoint > t) + 1;
+                var pointFromIndex = pointToIndex - 1;
+
+                var pointFrom = VelocityPoints[pointFromIndex];
+                var pointTo = VelocityPoints[pointToIndex];
+
+                var tFrom = TimesAtVelocityPoints.ElementAtOrDefault(pointFromIndex - 1);
+                var tTo = TimesAtVelocityPoints.ElementAtOrDefault(pointToIndex - 1);
+
+                var distance = pointTo.Distance - pointFrom.Distance;
+                if (pointFrom.Velocity == pointTo.Velocity)
+                {
+                    v = pointFrom.Velocity;
+                    s = pointFrom.Distance + (t - tFrom) * v;
+                }
+                else
+                {
+                    var calc = new P2PCalculator(distance * 2, _parameters.JerkMax, _parameters.AccelerationMax, Math.Abs(pointFrom.Velocity - pointTo.Velocity));
+                    if (pointFrom.Velocity < pointTo.Velocity)
+                    {
+                        // acceleration
+                        calc.GetStatus(t - tFrom, out _, out _, out v, out s);
+                        s += pointFrom.Distance;
+                    }
+                    else
+                    {
+                        // deceleration -> invert!
+                        calc.GetStatus(calc.t3 - (t - tFrom), out _, out _, out v, out s);
+                        s = pointTo.Distance - s;
+                    }
+
+                    v += Math.Min(pointFrom.Velocity, pointTo.Velocity);
+                }
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                v = 0;
+                s = 0;
+            }
+        }
+
+        private List<double> CalculateTimesAtVelocityPoints()
+        {
+            var times = new List<double>();
+            for (int i = 1; i < VelocityPoints.Count; i++)
+            {
+                var pointFrom = VelocityPoints[i - 1];
+                var pointTo = VelocityPoints[i];
+
+                if (pointFrom.Velocity == pointTo.Velocity)
+                {
+                    // constant motion
+                    times.Add(times.LastOrDefault() + (pointTo.Distance - pointFrom.Distance) / pointTo.Velocity);
+                }
+                else
+                {
+                    // acc-/deceleration
+                    var diffVelo = Math.Abs(pointTo.Velocity - pointFrom.Velocity);
+                    var timeForAccDec = P2PCalculator.CalculateTimeForAccDec(diffVelo, _parameters.JerkMax, _parameters.AccelerationMax);
+                    times.Add(times.LastOrDefault() + timeForAccDec);
+                }
+            }
+
+            return times;
         }
 
         private List<VelocityPoint> CalculateProfile()
@@ -28,19 +109,18 @@ namespace Point2Point.JointMotion
                 new VelocityPoint(0,0, null)
             };
 
-            for (var i = 0; i < _effectiveConstraints.Count; i++)
+            for (var i = 0; i < EffectiveConstraints.Count; i++)
             {
-                var constraint = _effectiveConstraints[i];
-                var nextConstraint = _effectiveConstraints.ElementAtOrDefault(i + 1);
+                var constraint = EffectiveConstraints[i];
+                var nextConstraint = EffectiveConstraints.ElementAtOrDefault(i + 1);
                 var availableDistance = constraint.Length;
-                var maxReachableVelocity = P2PCalculator.CalculateMaximumReachableVelocity(availableDistance, _parameters);
                 var startDistance = profilePoints.Max(v => v.Distance);
                 var lastVelocity = profilePoints.Last().Velocity;
-                var velocityDifferenceBetweenConstraints = Math.Abs(constraint.MaximumVelocity - lastVelocity);
-                if (maxReachableVelocity > velocityDifferenceBetweenConstraints)
+                var maxReachableVelocity = P2PRamp.GetReachableVelocity(availableDistance, lastVelocity, _parameters.JerkMax, _parameters.AccelerationMax);
+                if (maxReachableVelocity > constraint.MaximumVelocity)
                 {
                     // maximum allowed velocity can be reached
-                    var distanceForFullAcc = P2PCalculator.CalculateDistanceForAcceleration(velocityDifferenceBetweenConstraints, _parameters);
+                    var distanceForFullAcc = P2PCalculator.CalculateDistanceForAcceleration(lastVelocity, constraint.MaximumVelocity, _parameters);
                     if (nextConstraint != null && nextConstraint.MaximumVelocity > constraint.MaximumVelocity)
                     {
                         // next constraint allows higher velocity 
@@ -55,7 +135,7 @@ namespace Point2Point.JointMotion
                         // no next constraint available -> brake to zero
                         var targetVelocity = nextConstraint?.MaximumVelocity ?? 0.0;
                         var velocityDifferenceToTargetVelocity = Math.Abs(constraint.MaximumVelocity - targetVelocity);
-                        var distanceForBraking = P2PCalculator.CalculateDistanceForAcceleration(velocityDifferenceToTargetVelocity, _parameters);
+                        var distanceForBraking = P2PCalculator.CalculateDistanceForAcceleration(constraint.MaximumVelocity, targetVelocity, _parameters);
 
                         if (distanceForFullAcc + distanceForBraking < availableDistance)
                         {
@@ -113,6 +193,22 @@ namespace Point2Point.JointMotion
                 }
             }
 
+            for (int i = 0; i < profilePoints.Count - 1; i++)
+            {
+                if (profilePoints[i].Distance == profilePoints[i + 1].Distance)
+                {
+                    if (profilePoints[i].Velocity == profilePoints[i + 1].Velocity)
+                    {
+                        profilePoints.RemoveAt(i);
+                        i--;
+                    }
+                    else
+                    {
+                        //SPRUNG!!!
+                    }
+                }
+            }
+
             return profilePoints;
         }
 
@@ -121,9 +217,9 @@ namespace Point2Point.JointMotion
         /// </summary>
         private void MergeWithNextConstraint(VelocityConstraint constraint, ref int index)
         {
-            _effectiveConstraints.RemoveAt(index);
-            _effectiveConstraints[index].Start -= constraint.Length;
-            _effectiveConstraints[index].Length += constraint.Length;
+            EffectiveConstraints.RemoveAt(index);
+            EffectiveConstraints[index].Start -= constraint.Length;
+            EffectiveConstraints[index].Length += constraint.Length;
 
             index--;
         }
@@ -134,10 +230,10 @@ namespace Point2Point.JointMotion
         /// </summary>
         private void MergeWithPreviousConstraint(VelocityConstraint constraint, List<VelocityPoint> velocityPoints, ref int index)
         {
-            _effectiveConstraints.RemoveAt(index);
+            EffectiveConstraints.RemoveAt(index);
             if (index > 0)
             {
-                _effectiveConstraints[index - 1].Length += constraint.Length;
+                EffectiveConstraints[index - 1].Length += constraint.Length;
             }
             else
             {
@@ -170,7 +266,14 @@ namespace Point2Point.JointMotion
                     {
                         // did not find a possible targetVelocity ->
                         // iterave search failed -> step back
-                        MergeWithPreviousConstraint(constraint, velocityPoints, ref index);
+                        if (targetVelocity > lastVelocity)
+                        {
+                            MergeWithNextConstraint(constraint, ref index);
+                        }
+                        else
+                        {
+                            MergeWithPreviousConstraint(constraint, velocityPoints, ref index);
+                        }
                     }
                     return;
                 }
@@ -185,9 +288,9 @@ namespace Point2Point.JointMotion
             bool TryAddVelocityPoints(double targetVel)
             {
                 var velocityDifferenceToSDVelo = Math.Abs(targetVel - lastVelocity);
-                var distanceForSDAcc = P2PCalculator.CalculateDistanceForAcceleration(velocityDifferenceToSDVelo, _parameters);
+                var distanceForSDAcc = P2PCalculator.CalculateDistanceForAcceleration(lastVelocity, targetVel, _parameters);
                 var velocityDifferenceToTargetVelocityFromSD = Math.Abs(targetVel - targetVelocity);
-                var distanceForBrakingFromSD = P2PCalculator.CalculateDistanceForAcceleration(velocityDifferenceToTargetVelocityFromSD, _parameters);
+                var distanceForBrakingFromSD = P2PCalculator.CalculateDistanceForAcceleration(targetVel, targetVelocity, _parameters);
                 if (distanceForSDAcc + distanceForBrakingFromSD < availableDistance)
                 {
                     // constant velocity will be reached

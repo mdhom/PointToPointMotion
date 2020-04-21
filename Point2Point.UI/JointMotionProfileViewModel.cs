@@ -1,7 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Windows.Data;
 using System.Windows.Input;
+using Newtonsoft.Json;
 using OxyPlot;
 using OxyPlot.Axes;
 using OxyPlot.Series;
@@ -19,24 +22,33 @@ namespace Point2Point.UI
             set => ChangeProperty(value, ref _plotModel);
         }
 
-        private bool _drawRawSeries = true;
+        private bool _drawRawSeries;
         public bool DrawRawSeries
         {
             get => _drawRawSeries;
             set => ChangeProperty(value, ref _drawRawSeries, () => Update(_randomConstraints));
         }
 
+        private bool _drawMotionProfile;
+        public bool DrawMotionProfile
+        {
+            get => _drawMotionProfile;
+            set => ChangeProperty(value, ref _drawMotionProfile, () => Update(_randomConstraints));
+        }
+
         public ICommand RandomCommand { get; }
         public ICommand RecalcCommand { get; }
+        public ICommand SaveCommand { get; }
 
         private ConstraintsCollection _randomConstraints;
 
         public JointMotionProfileViewModel()
         {
-            Update(new ConstraintsCollection(
+            _randomConstraints = new ConstraintsCollection(
                 new VelocityConstraint(0, 1000, 500),
                 new VelocityConstraint(1000, 1000, 400),
-                new VelocityConstraint(500, 1000, 200)));
+                new VelocityConstraint(500, 1000, 200));
+            Update(_randomConstraints);
 
             RandomCommand = new RelayCommand(() =>
             {
@@ -58,15 +70,18 @@ namespace Point2Point.UI
                     Update(_randomConstraints);
                 }
             });
+
+            SaveCommand = new RelayCommand(() =>
+            {
+                if (_randomConstraints != null)
+                {
+                    File.WriteAllText($"{DateTime.Now:yyyy-MM-dd-hh-mm-ss}.json", JsonConvert.SerializeObject(_randomConstraints));
+                }
+            });
         }
 
         private void Update(ConstraintsCollection constraintsCollection)
         {
-            if (constraintsCollection == null)
-            {
-                return;
-            }
-
             var plotModel = new PlotModel()
             {
                 Title = "Joint motion"
@@ -85,8 +100,15 @@ namespace Point2Point.UI
             }
             
             DrawEffectiveConstraints(constraintsCollection, plotModel);
-            
-            DrawJointMotionProfile(constraintsCollection, plotModel);
+
+            var profile = new JointMotionProfile(constraintsCollection, new P2PParameters(2000, 500, 1000));
+
+            DrawVelocityPointsProfile(profile, plotModel);
+
+            if (DrawMotionProfile)
+            {
+                DrawJointMotionProfile(profile, plotModel);
+            }
 
             PlotModel = plotModel;
         }
@@ -110,10 +132,8 @@ namespace Point2Point.UI
             }
         }
 
-        private static void DrawJointMotionProfile(ConstraintsCollection constraintsCollection, PlotModel plotModel)
+        private static void DrawVelocityPointsProfile(JointMotionProfile jointMotionProfile, PlotModel plotModel)
         {
-            var profilePoints = JointMotionProfile.CalculateProfile(constraintsCollection, new P2PParameters(2000, 500, 1000));
-
             var jointSerie = new LineSeries()
             {
                 Title = "JointProfile",
@@ -121,12 +141,52 @@ namespace Point2Point.UI
                 ItemsSource = new List<DataPoint>()
             };
 
-            foreach (var point in profilePoints)
+            foreach (var point in jointMotionProfile.VelocityPoints)
             {
                 (jointSerie.ItemsSource as List<DataPoint>).Add(new DataPoint(point.Distance, point.Velocity));
             }
 
             plotModel.Series.Add(jointSerie);
+
+
+            var effSerie = new LineSeries()
+            {
+                Title = "JointProfile Edited",
+                Color = OxyColors.Purple,
+                ItemsSource = new List<DataPoint>()
+            };
+
+            foreach (var point in jointMotionProfile.EffectiveConstraints)
+            {
+                (effSerie.ItemsSource as List<DataPoint>).Add(new DataPoint(point.Start, point.MaximumVelocity));
+                (effSerie.ItemsSource as List<DataPoint>).Add(new DataPoint(point.End, point.MaximumVelocity));
+            }
+
+            plotModel.Series.Add(effSerie);
+        }
+
+        private static void DrawJointMotionProfile(JointMotionProfile jointMotionProfile, PlotModel plotModel)
+        {
+            try
+            {
+                var jointSerie = new LineSeries()
+                {
+                    Title = "Profile",
+                    Color = OxyColors.Gray,
+                    ItemsSource = new List<DataPoint>()
+                };
+
+                for (double t = 0; t < jointMotionProfile.TotalDuration; t += 0.01)
+                {
+                    jointMotionProfile.GetStatus(t, out var v, out var s);
+                    (jointSerie.ItemsSource as List<DataPoint>).Add(new DataPoint(s, v));
+                }
+
+                plotModel.Series.Add(jointSerie);
+            }
+            catch (Exception ex)
+            {
+            }
         }
 
         private static void DrawEffectiveConstraints(ConstraintsCollection constraintsCollection, PlotModel plotModel)

@@ -17,7 +17,9 @@
         <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
             <Button Content="Random" Command="{Binding RandomCommand}" />
             <Button Content="Recalc" Command="{Binding RecalcCommand}" />
+            <Button Content="Save" Command="{Binding SaveCommand}" />
             <CheckBox Content="Raw" IsChecked="{Binding DrawRawSeries}" />
+            <CheckBox Content="MotionProfile" IsChecked="{Binding DrawMotionProfile}" />
         </StackPanel>
 
         <oxy:PlotView Grid.Row="1" Model="{Binding PlotModel}">

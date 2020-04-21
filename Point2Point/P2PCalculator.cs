@@ -235,7 +235,7 @@ namespace Point2Point
             {
                 return 4;
             }
-            else if (VelocityMax > v_a && s > s_a && s > s_v)
+            else if (VelocityMax > v_a && s > s_a && s >= s_v)
             {
                 return 5;
             }
@@ -261,7 +261,7 @@ namespace Point2Point
                     return;
                 case 2:
                 case 4:
-                    tj = ThirdRoot(s / (2 * JerkMax));
+                    tj = CubeRoot.Get(s / (2 * JerkMax));
                     ta = tj;
                     tv = 2 * tj;
                     return;
@@ -280,11 +280,6 @@ namespace Point2Point
             }
         }
 
-        private static double ThirdRoot(double x)
-        {
-            return Math.Pow(x, 1.0 / 3.0);
-        }
-
         public double GetTotalDistance()
         {
             GetStatus(t7, out _, out _, out _, out var s);
@@ -298,35 +293,45 @@ namespace Point2Point
         }
 
         /// <summary>
-        /// Calculates maximum reachable velocity within the given distance.
-        /// Assumptions: a0=0, v0=0 -> a1=0, v1=??
-        /// </summary>
-        /// <param name="distance"></param>
-        /// <param name="parameters">Parameters that define motion behaviour</param>
-        /// <returns></returns>
-        public static double CalculateMaximumReachableVelocity(double distance, P2PParameters parameters)
-        {
-            // uses assumption that profile is always symetrical, so doubling the distance
-            // should make sure, that phase 4 (constant velocity) is reached
-            var calc = new P2PCalculator(distance * 2, parameters);
-            return calc.CalculateMaximumReachedVelocity();
-        }
-
-        /// <summary>
         /// Calculates the distance needed to reach the given vMax.
         /// Assumptions: a0=0, v0=0 -> a1=0, v1=vMax
         /// </summary>
         /// <param name="vMax">Maximum velocity to reach</param>
         /// <param name="parameters">Parameters that define motion behaviour</param>
         /// <returns></returns>
-        public static double CalculateDistanceForAcceleration(double vMax, P2PParameters parameters)
+        public static double CalculateDistanceForAcceleration(double vFrom, double vTo, P2PParameters parameters)
         {
             // uses assumption that profile is always symetrical, so doubling the distance
             // should make sure, that phase 4 (constant velocity) is reached
-            var parametersModified = new P2PParameters(parameters.JerkMax, parameters.AccelerationMax, vMax);
-            var calc = new P2PCalculator(double.MaxValue, parametersModified);
+            var parametersModified = new P2PParameters(parameters.JerkMax, parameters.AccelerationMax, Math.Abs(vFrom - vTo));
+            var calc = new P2PCalculator(100000.0, parametersModified);
             calc.GetStatus(calc.t3, out _, out _, out _, out var s);
-            return s;
+
+            var minVelo = Math.Min(vFrom, vTo);
+            if (minVelo >0)
+            {
+                return s + minVelo * calc.t3;
+            }
+            else
+            {
+                return s;
+            }
+        }
+
+        /// <summary>
+        /// Calculates the time needed to reach the given vMax.
+        /// Assumptions: a0=0, v0=0 -> a1=0, v1=vMax
+        /// </summary>
+        /// <param name="vMax">Maximum velocity to reach</param>
+        /// <param name="parameters">Parameters that define motion behaviour</param>
+        /// <returns></returns>
+        public static double CalculateTimeForAccDec(double vMax, double jerkMax, double accelerationMax)
+        {
+            // uses assumption that profile is always symetrical, so doubling the distance
+            // should make sure, that phase 4 (constant velocity) is reached
+            var parametersModified = new P2PParameters(jerkMax, accelerationMax, vMax);
+            var calc = new P2PCalculator(100000.0, parametersModified);
+            return calc.t3;
         }
     }
 #pragma warning restore IDE1006 // Naming Styles
