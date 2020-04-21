@@ -21,7 +21,7 @@ namespace Point2Point
             //TODO find error in calc.CalculateTimes:  WHY DOES THIS NOT WORK WHEN vTo=0????
             //(_d1, _d2) = calc.CalculateTimes(distance, vTo);
             // Until solved, i take the RampCalculator from Mats:
-            var result = RampCalculator.Calculate(0, vFrom, new RampMotionParameter(new P2PParameters(jMax, aMax, 1000)), vTo);
+            var result = RampCalculator.Calculate(0, vFrom, vTo, new RampMotionParameter(new P2PParameters(jMax, aMax, 1000)));
             _d1 = result.t1;
             _d2 = result.t2;
 
@@ -92,25 +92,6 @@ namespace Point2Point
                     return double.NaN;
             }
         }
-
-        #region GetReachableVelocity
-
-        public static double GetReachableVelocity(AccDecDirection direction, double distance, double v0, double jMax, double aMax)
-        {
-            var calculator = new P2PRampCalculations(direction, jMax, aMax, v0);
-            return calculator.GetReachableVelocity(distance);
-        }
-
-        private double GetReachableVelocity(double distance)
-        {
-            (var d1, var d2) = CalculateTimes(distance);
-
-            CalculateEndValues(d1, d2, _jMax, out var v3, out _);
-
-            return v3;
-        }
-
-        #endregion
 
         #region CalculateTimes
 

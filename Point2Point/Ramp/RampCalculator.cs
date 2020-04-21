@@ -17,11 +17,20 @@ namespace Shuttles.Base.Devices.Shuttles.Motion.Ramp
             MotionParameter = motionParameter;
         }
 
-        public static RampCalculationResult Calculate(double initialAcceleration, double initialVelocity, RampMotionParameter motionParameter, double targetVelocity)
-        {
-            var calculator = new RampCalculator(initialAcceleration, initialVelocity, motionParameter);
-            return calculator.Calculate(targetVelocity);
-        }
+        public static RampCalculationResult Calculate(double initialAcceleration, double initialVelocity, double targetVelocity, RampMotionParameter motionParameter)
+            => new RampCalculator(initialAcceleration, initialVelocity, motionParameter).Calculate(targetVelocity);
+
+        public static RampCalculationResult Calculate(double initialVelocity, double targetVelocity, RampMotionParameter motionParameter)
+            => Calculate(0, initialVelocity, targetVelocity, motionParameter);
+
+        public static double CalculateDistanceNeeded(double vFrom, double vTo, RampMotionParameter motionParameter)
+            => Calculate(vFrom, vTo, motionParameter).TotalDistance;
+
+        public static double CalculateTimeNeeded(double vFrom, double vTo, RampMotionParameter motionParameter)
+            => Calculate(vFrom, vTo, motionParameter).TotalDuration;
+
+        public static bool IsReachable(double initialVelocity, double targetVelocity, double distanceAvailable, RampMotionParameter motionParameter)
+            => CalculateDistanceNeeded(initialVelocity, targetVelocity, motionParameter) <= distanceAvailable;
 
         public RampCalculationResult Calculate(double targetVelocity)
         {

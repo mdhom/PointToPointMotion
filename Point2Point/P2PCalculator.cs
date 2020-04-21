@@ -291,43 +291,6 @@ namespace Point2Point
             GetStatus(t3, out _, out _, out var v, out _);
             return v;
         }
-
-        /// <summary>
-        /// Calculates the distance needed to reach the given vMax.
-        /// Assumptions: a0=0, v0=0 -> a1=0, v1=vMax
-        /// </summary>
-        /// <param name="vMax">Maximum velocity to reach</param>
-        /// <param name="parameters">Parameters that define motion behaviour</param>
-        /// <returns></returns>
-        public static double CalculateDistanceForAcceleration(double vFrom, double vTo, P2PParameters parameters)
-        {
-            // uses assumption that profile is always symetrical, so doubling the distance
-            // should make sure, that phase 4 (constant velocity) is reached
-            var parametersModified = new P2PParameters(parameters.JerkMax, parameters.AccelerationMax, Math.Abs(vFrom - vTo));
-            var calc = new P2PCalculator(100000.0, parametersModified);
-            calc.GetStatus(calc.t3, out _, out _, out _, out var s);
-
-            var minVelo = Math.Min(vFrom, vTo);
-            var sResult = minVelo > 0 ? s + minVelo * calc.t3 : s;
-
-            return sResult;
-        }
-
-        /// <summary>
-        /// Calculates the time needed to reach the given vMax.
-        /// Assumptions: a0=0, v0=0 -> a1=0, v1=vMax
-        /// </summary>
-        /// <param name="vMax">Maximum velocity to reach</param>
-        /// <param name="parameters">Parameters that define motion behaviour</param>
-        /// <returns></returns>
-        public static double CalculateTimeForAccDec(double vMax, double jerkMax, double accelerationMax)
-        {
-            // uses assumption that profile is always symetrical, so doubling the distance
-            // should make sure, that phase 4 (constant velocity) is reached
-            var parametersModified = new P2PParameters(jerkMax, accelerationMax, vMax);
-            var calc = new P2PCalculator(100000.0, parametersModified);
-            return calc.t3;
-        }
     }
 #pragma warning restore IDE1006 // Naming Styles
 #pragma warning restore IDE0059 // Unnecessary assignments
