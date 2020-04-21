@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Windows.Data;
 using System.Windows.Input;
 using Microsoft.Win32;
@@ -84,7 +85,7 @@ namespace Point2Point.UI
             {
                 if (_randomConstraints != null)
                 {
-                    File.WriteAllText($"{DateTime.Now:yyyy-MM-dd-hh-mm-ss}.json", JsonConvert.SerializeObject(_randomConstraints));
+                    SaveConstraintsCollection(_randomConstraints);
                 }
             });
 
@@ -98,6 +99,13 @@ namespace Point2Point.UI
                     Update(_randomConstraints);
                 }
             });
+        }
+
+        private string SaveConstraintsCollection(ConstraintsCollection constraintsCollection)
+        {
+            var filename = $"{DateTime.Now:yyyy-MM-dd-hh-mm-ss}.json";
+            File.WriteAllText(filename, JsonConvert.SerializeObject(constraintsCollection));
+            return filename;
         }
 
         private void Update(ConstraintsCollection constraintsCollection)
@@ -121,16 +129,32 @@ namespace Point2Point.UI
             
             DrawEffectiveConstraints(constraintsCollection, plotModel);
 
-            var profile = new JointMotionProfile(constraintsCollection, new P2PParameters(2000, 500, 1000));
-
-            if (DrawVelocityPoints)
+            try
             {
-                DrawVelocityPointsProfile(profile, plotModel);
+                var profile = new JointMotionProfile(constraintsCollection, new P2PParameters(2000, 500, 1000));
+
+                if (DrawVelocityPoints)
+                {
+                    DrawVelocityPointsProfile(profile, plotModel);
+                }
+
+                if (DrawMotionProfile)
+                {
+                    DrawJointMotionProfile(profile, plotModel);
+                }
             }
-
-            if (DrawMotionProfile)
+            catch (Exception ex)
             {
-                DrawJointMotionProfile(profile, plotModel);
+                var filename = SaveConstraintsCollection(constraintsCollection);
+                var exceptionFilename = Path.GetFileNameWithoutExtension(filename) + "-exception.json";
+                var sb = new StringBuilder();
+                sb.Append($"{ex.GetType()} - {ex.Message} \r\n{ex.StackTrace}");
+                while (ex.InnerException != null)
+                {
+                    ex = ex.InnerException;
+                    sb.Append($"{ex.GetType()} - {ex.Message} \r\n{ex.StackTrace}");
+                }
+                File.WriteAllText(exceptionFilename, sb.ToString());
             }
 
             PlotModel = plotModel;

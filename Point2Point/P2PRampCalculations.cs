@@ -142,6 +142,7 @@ namespace Point2Point
                 // => d2 > 0
                 double d2_1, d2_2;
                 (d1, d2_1, d2_2) = CalculateTimesWithConstantA(distance, dForAMax);
+
                 d2 = SelectPlausibleD2(distance, vTarget, d1, d2_1, d2_2);
                 path = 2;
             }
@@ -366,10 +367,11 @@ namespace Point2Point
 
         private (double d1, double d2_1, double d2_2) CalculateTimesWithConstantA(double distance, double d1)
         {
+            var jAbs = Math.Abs(_jMax);
             // solving quadratic equation using "Mitternachtsformel"
-            var mnfA = 0.5 * _jMax * d1;
-            var mnfB = _v0 + 1.5 * _jMax * d1 * d1;
-            var mnfC = 2 * _v0 * d1 + _jMax * d1 * d1 * d1 - distance;
+            var mnfA = 0.5 * jAbs * d1;
+            var mnfB = _v0 + 1.5 * jAbs * d1 * d1;
+            var mnfC = 2 * _v0 * d1 + jAbs * d1 * d1 * d1 - distance;
 
             // "Mitternachtsformel" provides two results
             var d2_1 = (-mnfB + Math.Sqrt(mnfB * mnfB - 4 * mnfA * mnfC)) / (2 * mnfA);

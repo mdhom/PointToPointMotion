@@ -110,7 +110,16 @@ namespace Point2Point.JointMotion
 
                 var direction = GetAccDecDirection(startVelocity, targetVelocity);
 
-                var maxReachableVelocity = P2PRampCalculations.GetReachableVelocity(direction, availableDistance, startVelocity, _parameters.JerkMax, _parameters.AccelerationMax);
+                var maxReachableVelocity = 0.0;
+                try
+                {
+                    maxReachableVelocity = P2PRampCalculations.GetReachableVelocity(direction, availableDistance, startVelocity, _parameters.JerkMax, _parameters.AccelerationMax);
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception($"Calculating maxReachableVelocity for constraint at {i} (Start:{constraint.Start:N3},MaxVel:{constraint.MaximumVelocity:N3})", ex);
+                }
+
                 if (direction == AccDecDirection.Constant || maxReachableVelocity > constraint.MaximumVelocity)
                 {
                     // maximum allowed velocity can be reached
@@ -243,7 +252,7 @@ namespace Point2Point.JointMotion
             if (index > 0)
             {
                 EffectiveConstraints[index - 1].Length += constraint.Length;
-                EffectiveConstraints[index - 1].MaximumVelocity = constraint.MaximumVelocity;
+                EffectiveConstraints[index - 1].MaximumVelocity = Math.Min(constraint.MaximumVelocity, EffectiveConstraints[index - 1].MaximumVelocity);
             }
             else
             {
