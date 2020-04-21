@@ -43,19 +43,25 @@ namespace Point2Point.JointMotion
                 var pointFrom = VelocityPoints[pointFromIndex];
                 var pointTo = VelocityPoints[pointToIndex];
 
+                var vFrom = pointFrom.Velocity;
+                var vTo = pointTo.Velocity;
+
                 var tFrom = TimesAtVelocityPoints.ElementAtOrDefault(pointFromIndex - 1);
+                var tInRamp = t - tFrom;
 
                 var distance = pointTo.Distance - pointFrom.Distance;
                 if (pointFrom.Velocity == pointTo.Velocity)
                 {
                     v = pointFrom.Velocity;
-                    s = pointFrom.Distance + (t - tFrom) * v;
+                    s = pointFrom.Distance + tInRamp * v;
                 }
                 else
                 {
-                    var ramp = new P2PRamp(distance, pointFrom.Velocity, pointTo.Velocity, _parameters.JerkMax, _parameters.AccelerationMax);
+                    var ramp = RampCalculator.Calculate(vFrom, vTo, _rampParameters);
+                    RampCalculator.CalculateStatus(ramp, tInRamp, out _, out _, out v, out s);
 
-                    ramp.GetStatus(t - tFrom, out _, out _, out v, out s);
+                    //var ramp = new P2PRamp(distance, pointFrom.Velocity, pointTo.Velocity, _parameters.JerkMax, _parameters.AccelerationMax);
+                    //ramp.GetStatus(t - tFrom, out _, out _, out v, out s);
 
                     s += pointFrom.Distance;
                 }

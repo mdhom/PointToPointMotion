@@ -8,9 +8,9 @@ namespace Shuttles.Base.Devices.Shuttles.Motion.Ramp
         public double InitialVelocity { get; }
         public RampMotionParameter MotionParameter { get; }
 
-        public bool Inverted { get; set; }
+        public bool Inverted { get; private set; }
 
-        public RampCalculator(double initialAcceleration, double initialVelocity, RampMotionParameter motionParameter)
+        private RampCalculator(double initialAcceleration, double initialVelocity, RampMotionParameter motionParameter)
         {
             InitialAcceleration = initialAcceleration;
             InitialVelocity = initialVelocity;
@@ -32,10 +32,82 @@ namespace Shuttles.Base.Devices.Shuttles.Motion.Ramp
         public static bool IsReachable(double initialVelocity, double targetVelocity, double distanceAvailable, RampMotionParameter motionParameter)
             => CalculateDistanceNeeded(initialVelocity, targetVelocity, motionParameter) <= distanceAvailable;
 
-        public RampCalculationResult Calculate(double targetVelocity)
+        public static void CalculateStatus(RampCalculationResult ramp, double t, out double j, out double a, out double v, out double s)
+        {
+            // different understandings between rampCalculator t's and mine
+            var t1 = ramp.t1;
+            var t2 = t1 + ramp.t2;
+            var t3 = t2 + ramp.t3;
+
+            var jMax = ramp.MotionState == RampMotionState.Accelerate ? ramp.Parameters.PositiveJerk : ramp.Parameters.NegativeJerk;
+            var v0 = ramp.vFrom;
+
+            if (t <= t1)
+            {
+                GetStatus1(t, out j, out a, out v, out s);
+            }
+            else
+            {
+                GetStatus1(t1, out var j1, out var a1, out var v1, out var s1);
+
+                if (t <= t2)
+                {
+                    GetStatus2(t, a1, v1, s1, out j, out a, out v, out s);
+                }
+                else
+                {
+                    GetStatus2(t2, a1, v1, s1, out var j2, out var a2, out var v2, out var s2);
+
+                    if (t <= t3)
+                    {
+                        GetStatus3(t, a2, v2, s2, out j, out a, out v, out s);
+                    }
+                    else
+                    {
+                        //FUCK!
+                        throw new ArgumentOutOfRangeException(nameof(t), $"Given time t ({t:N3}) must be lower than t3 which is {t3:N2} at the moment");
+                    }
+                }
+            }
+
+            void GetStatus1(double tIn, out double jOut, out double aOut, out double vOut, out double sOut)
+            {
+                jOut = jMax;
+                aOut = jMax * tIn;
+                vOut = v0 + 0.5 * jMax * tIn * tIn;
+                sOut = v0 * tIn + jMax / 6 * tIn * tIn * tIn;
+            }
+
+            void GetStatus2(double tIn, double a1, double v1, double s1, out double jOut, out double aOut, out double vOut, out double sOut)
+            {
+                jOut = 0;
+                aOut = a1;
+                vOut = v1 + a1 * (tIn - t1);
+                sOut = s1 + v1 * (tIn - t1) + 0.5 * a1 * (tIn - t1) * (tIn - t1);
+            }
+
+            void GetStatus3(double tIn, double a2, double v2, double s2, out double jOut, out double aOut, out double vOut, out double sOut)
+            {
+                var tPhase = tIn - t2;
+                var tPhase2 = tPhase * tPhase;
+                var tPhase3 = tPhase2 * tPhase;
+
+                jOut = -jMax;
+                aOut = a2 - jMax * tPhase;
+                vOut = v2 + a2 * tPhase + 0.5 * -jMax * tPhase2;
+                sOut = s2 + v2 * tPhase + 0.5 * a2 * tPhase2 + -jMax / 6 * tPhase3;
+            }
+        }
+
+        #region Calculation
+
+        private RampCalculationResult Calculate(double targetVelocity)
         {
             var result = new RampCalculationResult
             {
+                Parameters = MotionParameter,
+                vFrom = InitialVelocity,
+                vTo = targetVelocity,
                 //1. Bestimmung ob Bremsen oder Beschleuningen
                 MotionState = targetVelocity < InitialVelocity ? RampMotionState.Brake : RampMotionState.Accelerate
             };
@@ -193,5 +265,7 @@ namespace Shuttles.Base.Devices.Shuttles.Motion.Ramp
 
             return false;
         }
+
+        #endregion
     }
 }
