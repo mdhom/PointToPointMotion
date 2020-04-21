@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Windows.Data;
 using System.Windows.Input;
+using Microsoft.Win32;
 using Newtonsoft.Json;
 using OxyPlot;
 using OxyPlot.Axes;
@@ -36,9 +37,17 @@ namespace Point2Point.UI
             set => ChangeProperty(value, ref _drawMotionProfile, () => Update(_randomConstraints));
         }
 
+        private bool _drawVelocityPoints = true;
+        public bool DrawVelocityPoints
+        {
+            get => _drawVelocityPoints;
+            set => ChangeProperty(value, ref _drawVelocityPoints, () => Update(_randomConstraints));
+        }
+
         public ICommand RandomCommand { get; }
         public ICommand RecalcCommand { get; }
         public ICommand SaveCommand { get; }
+        public ICommand LoadCommand { get; }
 
         private ConstraintsCollection _randomConstraints;
 
@@ -78,6 +87,17 @@ namespace Point2Point.UI
                     File.WriteAllText($"{DateTime.Now:yyyy-MM-dd-hh-mm-ss}.json", JsonConvert.SerializeObject(_randomConstraints));
                 }
             });
+
+            LoadCommand = new RelayCommand(() =>
+            {
+                var dialog = new OpenFileDialog();
+                if (dialog.ShowDialog().GetValueOrDefault(false))
+                {
+                    var jsonContent = File.ReadAllText(dialog.FileName);
+                    _randomConstraints = JsonConvert.DeserializeObject<ConstraintsCollection>(jsonContent);
+                    Update(_randomConstraints);
+                }
+            });
         }
 
         private void Update(ConstraintsCollection constraintsCollection)
@@ -103,7 +123,10 @@ namespace Point2Point.UI
 
             var profile = new JointMotionProfile(constraintsCollection, new P2PParameters(2000, 500, 1000));
 
-            DrawVelocityPointsProfile(profile, plotModel);
+            if (DrawVelocityPoints)
+            {
+                DrawVelocityPointsProfile(profile, plotModel);
+            }
 
             if (DrawMotionProfile)
             {
@@ -178,8 +201,15 @@ namespace Point2Point.UI
 
                 for (double t = 0; t < jointMotionProfile.TotalDuration; t += 0.01)
                 {
-                    jointMotionProfile.GetStatus(t, out var v, out var s);
-                    (jointSerie.ItemsSource as List<DataPoint>).Add(new DataPoint(s, v));
+                    try
+                    {
+                        jointMotionProfile.GetStatus(t, out var v, out var s);
+                        (jointSerie.ItemsSource as List<DataPoint>).Add(new DataPoint(s, v));
+                    }
+                    catch (Exception ex)
+                    {
+                        break;
+                    }
                 }
 
                 plotModel.Series.Add(jointSerie);

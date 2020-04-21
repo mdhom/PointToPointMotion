@@ -18,8 +18,10 @@
             <Button Content="Random" Command="{Binding RandomCommand}" />
             <Button Content="Recalc" Command="{Binding RecalcCommand}" />
             <Button Content="Save" Command="{Binding SaveCommand}" />
+            <Button Content="Load" Command="{Binding LoadCommand}" />
             <CheckBox Content="Raw" IsChecked="{Binding DrawRawSeries}" />
             <CheckBox Content="MotionProfile" IsChecked="{Binding DrawMotionProfile}" />
+            <CheckBox Content="VelocityPoints" IsChecked="{Binding DrawVelocityPoints}" />
         </StackPanel>
 
         <oxy:PlotView Grid.Row="1" Model="{Binding PlotModel}">

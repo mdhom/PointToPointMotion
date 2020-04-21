@@ -308,14 +308,9 @@ namespace Point2Point
             calc.GetStatus(calc.t3, out _, out _, out _, out var s);
 
             var minVelo = Math.Min(vFrom, vTo);
-            if (minVelo >0)
-            {
-                return s + minVelo * calc.t3;
-            }
-            else
-            {
-                return s;
-            }
+            var sResult = minVelo > 0 ? s + minVelo * calc.t3 : s;
+
+            return sResult;
         }
 
         /// <summary>

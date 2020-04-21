@@ -11,12 +11,13 @@ namespace Point2Point.Tests
         {
             var jMax = 2000;
             var aMax = 1000;
+            var distance = 2000;
 
             double reachable;
-            reachable = P2PRamp.GetReachableVelocity(250, 0, jMax, aMax);
-            reachable = P2PRamp.GetReachableVelocity(500, 0, jMax, aMax);
-            reachable = P2PRamp.GetReachableVelocity(100, 0, jMax, aMax);
-            reachable = P2PRamp.GetReachableVelocity(100, 100, jMax, aMax);
+            reachable = P2PRampCalculations.GetReachableVelocity(AccDecDirection.Acc, 250, 0, jMax, aMax);
+            reachable = P2PRampCalculations.GetReachableVelocity(AccDecDirection.Acc, 500, 0, jMax, aMax);
+            reachable = P2PRampCalculations.GetReachableVelocity(AccDecDirection.Acc, 100, 0, jMax, aMax);
+            reachable = P2PRampCalculations.GetReachableVelocity(AccDecDirection.Acc, 100, 100, jMax, aMax);
 
             var constraints = new ConstraintsCollection(
                 new VelocityConstraint(0, 1000, 500),

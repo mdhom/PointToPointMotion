@@ -4,7 +4,7 @@
     {
         public double Start { get; set; }
         public double Length { get; set; }
-        public double MaximumVelocity { get; }
+        public double MaximumVelocity { get; set; }
 
         public double End => Start + Length;
 

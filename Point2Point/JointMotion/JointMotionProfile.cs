@@ -6,8 +6,6 @@ namespace Point2Point.JointMotion
 {
     public class JointMotionProfile
     {
-        private const double _epsilon = 0.000000001;
-
         private readonly P2PParameters _parameters;
         public List<VelocityConstraint> EffectiveConstraints { get; }
         public List<VelocityPoint> VelocityPoints { get; }
@@ -43,7 +41,6 @@ namespace Point2Point.JointMotion
                 var pointTo = VelocityPoints[pointToIndex];
 
                 var tFrom = TimesAtVelocityPoints.ElementAtOrDefault(pointFromIndex - 1);
-                var tTo = TimesAtVelocityPoints.ElementAtOrDefault(pointToIndex - 1);
 
                 var distance = pointTo.Distance - pointFrom.Distance;
                 if (pointFrom.Velocity == pointTo.Velocity)
@@ -53,24 +50,16 @@ namespace Point2Point.JointMotion
                 }
                 else
                 {
-                    var calc = new P2PCalculator(distance * 2, _parameters.JerkMax, _parameters.AccelerationMax, Math.Abs(pointFrom.Velocity - pointTo.Velocity));
-                    if (pointFrom.Velocity < pointTo.Velocity)
-                    {
-                        // acceleration
-                        calc.GetStatus(t - tFrom, out _, out _, out v, out s);
-                        s += pointFrom.Distance;
-                    }
-                    else
-                    {
-                        // deceleration -> invert!
-                        calc.GetStatus(calc.t3 - (t - tFrom), out _, out _, out v, out s);
-                        s = pointTo.Distance - s;
-                    }
+                    var ramp = new P2PRamp(distance, pointFrom.Velocity, pointTo.Velocity, _parameters.JerkMax, _parameters.AccelerationMax);
 
-                    v += Math.Min(pointFrom.Velocity, pointTo.Velocity);
+                    ramp.GetStatus(t - tFrom, out _, out _, out v, out s);
+
+                    s += pointFrom.Distance;
                 }
             }
-            catch (ArgumentOutOfRangeException)
+#pragma warning disable CS0168 // exception object used for debugging
+            catch (ArgumentOutOfRangeException ex)
+#pragma warning restore CS0168
             {
                 v = 0;
                 s = 0;
@@ -80,7 +69,7 @@ namespace Point2Point.JointMotion
         private List<double> CalculateTimesAtVelocityPoints()
         {
             var times = new List<double>();
-            for (int i = 1; i < VelocityPoints.Count; i++)
+            for (var i = 1; i < VelocityPoints.Count; i++)
             {
                 var pointFrom = VelocityPoints[i - 1];
                 var pointTo = VelocityPoints[i];
@@ -113,14 +102,19 @@ namespace Point2Point.JointMotion
             {
                 var constraint = EffectiveConstraints[i];
                 var nextConstraint = EffectiveConstraints.ElementAtOrDefault(i + 1);
+
                 var availableDistance = constraint.Length;
                 var startDistance = profilePoints.Max(v => v.Distance);
-                var lastVelocity = profilePoints.Last().Velocity;
-                var maxReachableVelocity = P2PRamp.GetReachableVelocity(availableDistance, lastVelocity, _parameters.JerkMax, _parameters.AccelerationMax);
-                if (maxReachableVelocity > constraint.MaximumVelocity)
+                var startVelocity = profilePoints.Last().Velocity;
+                var targetVelocity = constraint.MaximumVelocity;
+
+                var direction = GetAccDecDirection(startVelocity, targetVelocity);
+
+                var maxReachableVelocity = P2PRampCalculations.GetReachableVelocity(direction, availableDistance, startVelocity, _parameters.JerkMax, _parameters.AccelerationMax);
+                if (direction == AccDecDirection.Constant || maxReachableVelocity > constraint.MaximumVelocity)
                 {
                     // maximum allowed velocity can be reached
-                    var distanceForFullAcc = P2PCalculator.CalculateDistanceForAcceleration(lastVelocity, constraint.MaximumVelocity, _parameters);
+                    var distanceForFullAcc = P2PCalculator.CalculateDistanceForAcceleration(startVelocity, constraint.MaximumVelocity, _parameters);
                     if (nextConstraint != null && nextConstraint.MaximumVelocity > constraint.MaximumVelocity)
                     {
                         // next constraint allows higher velocity 
@@ -133,8 +127,7 @@ namespace Point2Point.JointMotion
                         // next constraint is below current constraint -> braking is necessary 
                         // OR
                         // no next constraint available -> brake to zero
-                        var targetVelocity = nextConstraint?.MaximumVelocity ?? 0.0;
-                        var velocityDifferenceToTargetVelocity = Math.Abs(constraint.MaximumVelocity - targetVelocity);
+                        targetVelocity = nextConstraint?.MaximumVelocity ?? 0.0;
                         var distanceForBraking = P2PCalculator.CalculateDistanceForAcceleration(constraint.MaximumVelocity, targetVelocity, _parameters);
 
                         if (distanceForFullAcc + distanceForBraking < availableDistance)
@@ -154,18 +147,18 @@ namespace Point2Point.JointMotion
                         {
                             // we can not fully accelerate because we need to brake earlier than possible when only accelerating
                             // UNTIL I KNOW BETTER: iterative approach
-                            IterativlyFindSteppedDownVelocity(lastVelocity, constraint, availableDistance, startDistance, targetVelocity, profilePoints, ref i);
+                            IterativlyFindSteppedDownVelocity(startVelocity, constraint, availableDistance, startDistance, targetVelocity, profilePoints, ref i);
                         }
                     }
                 }
                 else if (nextConstraint != null)
                 {
                     // there is at least one constraint to follow
-                    var diffToNextConstraint = Math.Abs(nextConstraint.MaximumVelocity - lastVelocity);
+                    var diffToNextConstraint = Math.Abs(nextConstraint.MaximumVelocity - startVelocity);
                     if (diffToNextConstraint > maxReachableVelocity)
                     {
                         // next constraint can not be reached from current constraint
-                        if (nextConstraint.MaximumVelocity < lastVelocity)
+                        if (nextConstraint.MaximumVelocity < startVelocity)
                         {
                             // next constraint is a step downwards, so there could be a
                             // critical intersection with the constraints
@@ -183,17 +176,17 @@ namespace Point2Point.JointMotion
                     else
                     {
                         // after this constraint, next constraint is lower -> try find maximum reachable velocity
-                        IterativlyFindSteppedDownVelocity(lastVelocity, constraint, availableDistance, startDistance, nextConstraint.MaximumVelocity, profilePoints, ref i);
+                        IterativlyFindSteppedDownVelocity(startVelocity, constraint, availableDistance, startDistance, nextConstraint.MaximumVelocity, profilePoints, ref i);
                     }
                 }
                 else
                 {
                     // no constraint any more -> brake to zero
-                    IterativlyFindSteppedDownVelocity(lastVelocity, constraint, availableDistance, startDistance, 0.0, profilePoints, ref i);
+                    IterativlyFindSteppedDownVelocity(startVelocity, constraint, availableDistance, startDistance, 0.0, profilePoints, ref i);
                 }
             }
 
-            for (int i = 0; i < profilePoints.Count - 1; i++)
+            for (var i = 0; i < profilePoints.Count - 1; i++)
             {
                 if (profilePoints[i].Distance == profilePoints[i + 1].Distance)
                 {
@@ -210,6 +203,22 @@ namespace Point2Point.JointMotion
             }
 
             return profilePoints;
+        }
+
+        private static AccDecDirection GetAccDecDirection(double vFrom, double vTo)
+        {
+            if (vFrom == vTo)
+            {
+                return AccDecDirection.Constant;
+            }
+            else if (vFrom < vTo)
+            {
+                return AccDecDirection.Acc;
+            }
+            else
+            {
+                return AccDecDirection.Dec;
+            }
         }
 
         /// <summary>
@@ -234,6 +243,7 @@ namespace Point2Point.JointMotion
             if (index > 0)
             {
                 EffectiveConstraints[index - 1].Length += constraint.Length;
+                EffectiveConstraints[index - 1].MaximumVelocity = constraint.MaximumVelocity;
             }
             else
             {
@@ -287,9 +297,7 @@ namespace Point2Point.JointMotion
 
             bool TryAddVelocityPoints(double targetVel)
             {
-                var velocityDifferenceToSDVelo = Math.Abs(targetVel - lastVelocity);
                 var distanceForSDAcc = P2PCalculator.CalculateDistanceForAcceleration(lastVelocity, targetVel, _parameters);
-                var velocityDifferenceToTargetVelocityFromSD = Math.Abs(targetVel - targetVelocity);
                 var distanceForBrakingFromSD = P2PCalculator.CalculateDistanceForAcceleration(targetVel, targetVelocity, _parameters);
                 if (distanceForSDAcc + distanceForBrakingFromSD < availableDistance)
                 {
