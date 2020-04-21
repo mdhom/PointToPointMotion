@@ -18,6 +18,8 @@ namespace Point2Point
             _v0 = v0;
         }
 
+        #region GetReachableVelocity
+
         public static double GetReachableVelocity(double distance, double v0, double jMax, double aMax)
         {
             var calculator = new P2PRamp(jMax, aMax, v0);
@@ -25,6 +27,19 @@ namespace Point2Point
         }
 
         private double GetReachableVelocity(double distance)
+        {
+            (var d1, var d2) = CalculateTimes(distance);
+
+            CalculateEndValues(d1, d2, _jMax, out var v3, out _);
+
+            return v3;
+        }
+
+        #endregion
+
+        #region CalculateTimes
+
+        private (double d1, double d2) CalculateTimes(double distance)
         {
             // Phase 1: positive jerk, lineary increasing acceleration, quadratic increasing velocity
             // Phase 2: zero jerk, constant acceleration, lineary increasing velocity
@@ -51,7 +66,7 @@ namespace Point2Point
                 // => d2 > 0
                 (d1, d2) = CalculateTimesWithConstantA(distance, dForAMax);
             }
-            else if  (s3 > distance)
+            else if (s3 > distance)
             {
                 // The previously calculated profile overshoots the given distance.
                 // To stay within the given distance, aMax obviously must not be reached.
@@ -66,7 +81,7 @@ namespace Point2Point
                 throw new InvalidOperationException($"Invalid calculated distance {s3}, target would be {distance}");
             }
 
-            return v3;
+            return (d1, d2);
         }
 
         private (double d1, double d2) CalculateTimesWithANotReached(double distance)
@@ -105,10 +120,7 @@ namespace Point2Point
             return (d1, d2);
         }
 
-        private void CalculateEndValues(double d1, double d2, double jMax, out double v3, out double s3)
-        {
-            GetStatus(d1 + d2 + d1, _v0, d1, d2, jMax, out _, out _, out v3, out s3);
-        }
+        #endregion
 
         #region Calculations from P2PCalculator, extended by v0
 
@@ -174,5 +186,10 @@ namespace Point2Point
         }
 
         #endregion
+
+        private void CalculateEndValues(double d1, double d2, double jMax, out double v3, out double s3)
+        {
+            GetStatus(d1 + d2 + d1, _v0, d1, d2, jMax, out _, out _, out v3, out s3);
+        }
     }
 }
