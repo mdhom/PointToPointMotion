@@ -11,6 +11,7 @@ using OxyPlot.Axes;
 using OxyPlot.Series;
 using Point2Point.JointMotion;
 using Servus.Core.Ui;
+using Shuttles.Base.Devices.Shuttles.Motion.Ramp;
 
 namespace Point2Point.UI
 {
@@ -143,7 +144,13 @@ namespace Point2Point.UI
 
             try
             {
-                var profile = new JointMotionProfile(constraintsCollection, new P2PParameters(2000, 500, 1000));
+                var parameters = new RampMotionParameter(
+                    positiveJerk: 2000,
+                    negativeJerk: -2000,
+                    maximumAcceleration: 500,
+                    maximumDecceleration: -200);
+
+                var profile = new JointMotionProfile(parameters, constraintsCollection);
 
                 if (DrawVelocityPoints)
                 {

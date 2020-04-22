@@ -7,21 +7,29 @@ namespace Point2Point.JointMotion
 {
     public class JointMotionProfile
     {
-        private readonly RampMotionParameter _rampParameters;
+        public RampMotionParameter Parameters { get; }
 
-        public List<VelocityConstraint> EffectiveConstraints { get; }
+        public List<VelocityConstraint> EffectiveConstraints { get; private set; }
         public List<VelocityPoint> VelocityProfilePoints { get; private set; }
         public List<RampCalculationResult> RampResults { get; private set; }
         public List<double> TimesAtVelocityPoints { get; private set; }
         public double TotalDuration { get; private set; }
 
-        public JointMotionProfile(ConstraintsCollection constraints, P2PParameters parameters)
+        public JointMotionProfile(RampMotionParameter parameters, ConstraintsCollection constraints)
         {
-            _rampParameters = new RampMotionParameter(parameters);
+            Parameters = parameters;
 
-            EffectiveConstraints = constraints.GetEffectiveConstraints();
+            CalculateProfile(constraints);
+        }
 
-            CalculateProfile();
+        public JointMotionProfile(RampMotionParameter parameters, IEnumerable<VelocityConstraint> constraints)
+            : this(parameters, new ConstraintsCollection(constraints))
+        {
+        }
+
+        public JointMotionProfile(RampMotionParameter parameters, VelocityConstraint constraint, params VelocityConstraint[] constraints)
+            : this(parameters, new List<VelocityConstraint>() { constraint }.Concat(constraints))
+        {
         }
 
         public void GetStatus(double t, out double v, out double s)
@@ -51,8 +59,10 @@ namespace Point2Point.JointMotion
             s += pointFrom.Distance;
         }
 
-        private void CalculateProfile()
+        private void CalculateProfile(ConstraintsCollection constraints)
         {
+            EffectiveConstraints = constraints.GetEffectiveConstraints();
+
             var profilePoints = new List<VelocityPoint>()
             {
                 new VelocityPoint(0,0, null)
@@ -68,10 +78,10 @@ namespace Point2Point.JointMotion
                 var startVelocity = profilePoints.Last().Velocity;
                 var targetVelocity = constraint.MaximumVelocity;
 
-                if (AreSameVelocities(startVelocity, targetVelocity) || RampCalculator.IsReachable(startVelocity, targetVelocity, availableDistance, _rampParameters))
+                if (AreSameVelocities(startVelocity, targetVelocity) || RampCalculator.IsReachable(startVelocity, targetVelocity, availableDistance, Parameters))
                 {
                     // maximum allowed velocity can be reached
-                    var distanceForFullAcc = RampCalculator.CalculateDistanceNeeded(startVelocity, constraint.MaximumVelocity, _rampParameters);
+                    var distanceForFullAcc = RampCalculator.CalculateDistanceNeeded(startVelocity, constraint.MaximumVelocity, Parameters);
                     if (nextConstraint != null && nextConstraint.MaximumVelocity > constraint.MaximumVelocity)
                     {
                         // next constraint allows higher velocity 
@@ -85,7 +95,7 @@ namespace Point2Point.JointMotion
                         // OR
                         // no next constraint available -> brake to zero
                         targetVelocity = nextConstraint?.MaximumVelocity ?? 0.0;
-                        var distanceForBraking = RampCalculator.CalculateDistanceNeeded(constraint.MaximumVelocity, targetVelocity, _rampParameters);
+                        var distanceForBraking = RampCalculator.CalculateDistanceNeeded(constraint.MaximumVelocity, targetVelocity, Parameters);
 
                         if (distanceForFullAcc + distanceForBraking < availableDistance)
                         {
@@ -111,7 +121,7 @@ namespace Point2Point.JointMotion
                 else if (nextConstraint != null)
                 {
                     // there is at least one constraint to follow
-                    if (!RampCalculator.IsReachable(startVelocity, nextConstraint.MaximumVelocity, availableDistance + nextConstraint.Length, _rampParameters))
+                    if (!RampCalculator.IsReachable(startVelocity, nextConstraint.MaximumVelocity, availableDistance + nextConstraint.Length, Parameters))
                     {
                         // next constraint can not be reached from current constraint
                         if (nextConstraint.MaximumVelocity < startVelocity)
@@ -154,7 +164,7 @@ namespace Point2Point.JointMotion
                 var pFrom = profilePoints[i];
                 var pTo = profilePoints[i + 1];
 
-                var ramp = RampCalculator.Calculate(pFrom.Velocity, pTo.Velocity, _rampParameters);
+                var ramp = RampCalculator.Calculate(pFrom.Velocity, pTo.Velocity, Parameters);
                 rampResults.Add(ramp);
 
                 if (!ramp.Flat && Math.Abs(ramp.TotalDistance - (pTo.Distance - pFrom.Distance)) > 1e-8)
@@ -254,8 +264,8 @@ namespace Point2Point.JointMotion
 
             bool TryAddVelocityPoints(double targetVel)
             {
-                var distanceForSDAcc = RampCalculator.CalculateDistanceNeeded(lastVelocity, targetVel, _rampParameters);
-                var distanceForBrakingFromSD = RampCalculator.CalculateDistanceNeeded(targetVel, targetVelocity, _rampParameters);
+                var distanceForSDAcc = RampCalculator.CalculateDistanceNeeded(lastVelocity, targetVel, Parameters);
+                var distanceForBrakingFromSD = RampCalculator.CalculateDistanceNeeded(targetVel, targetVelocity, Parameters);
                 if (distanceForSDAcc + distanceForBrakingFromSD < availableDistance)
                 {
                     // constant velocity will be reached
