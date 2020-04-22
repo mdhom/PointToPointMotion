@@ -27,5 +27,8 @@
         {
             InvertedAccDeccState = !InvertedAccDeccState;
         }
+
+        public bool IsReachable(double availableDistance)
+            => TotalDistance <= availableDistance;
     }
 }

@@ -120,7 +120,7 @@ namespace Point2Point.JointMotion
                 }
                 else if (nextConstraint != null)
                 {
-                    // there is at least one constraint to follow
+                    // maximum allowed velocity can't be reached and there is at least one constraint to follow
                     if (!RampCalculator.IsReachable(startVelocity, nextConstraint.MaximumVelocity, availableDistance + nextConstraint.Length, Parameters))
                     {
                         // next constraint can not be reached from current constraint

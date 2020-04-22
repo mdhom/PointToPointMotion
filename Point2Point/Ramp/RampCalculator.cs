@@ -30,7 +30,7 @@ namespace Shuttles.Base.Devices.Shuttles.Motion.Ramp
             => Calculate(vFrom, vTo, motionParameter).TotalDuration;
 
         public static bool IsReachable(double initialVelocity, double targetVelocity, double distanceAvailable, RampMotionParameter motionParameter)
-            => CalculateDistanceNeeded(initialVelocity, targetVelocity, motionParameter) <= distanceAvailable;
+            => Calculate(initialVelocity, targetVelocity, motionParameter).IsReachable(distanceAvailable);
 
         public static void CalculateStatus(RampCalculationResult ramp, double t, out double j, out double a, out double v, out double s)
         {
