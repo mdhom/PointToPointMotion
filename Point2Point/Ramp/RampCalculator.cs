@@ -47,7 +47,7 @@ namespace Shuttles.Base.Devices.Shuttles.Motion.Ramp
             }
             else
             {
-                GetStatus1(t1, out var j1, out var a1, out var v1, out var s1);
+                GetStatus1(t1, out _, out var a1, out var v1, out var s1);
 
                 if (t <= t2)
                 {
@@ -55,7 +55,7 @@ namespace Shuttles.Base.Devices.Shuttles.Motion.Ramp
                 }
                 else
                 {
-                    GetStatus2(t2, a1, v1, s1, out var j2, out var a2, out var v2, out var s2);
+                    GetStatus2(t2, a1, v1, s1, out _, out var a2, out var v2, out var s2);
 
                     if (t <= t3)
                     {
