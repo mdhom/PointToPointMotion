@@ -26,44 +26,34 @@ namespace Point2Point.JointMotion
 
         public void GetStatus(double t, out double v, out double s)
         {
-            try
-            {
-                if (t > TimesAtVelocityPoints.Last())
-                {
-                    v = 0;
-                    s = 0;
-                    return;
-                }
-
-                var pointToIndex = TimesAtVelocityPoints.FindIndex(tAtPoint => tAtPoint > t) + 1;
-                var pointFromIndex = pointToIndex - 1;
-
-                var pointFrom = VelocityProfilePoints[pointFromIndex];
-                var pointTo = VelocityProfilePoints[pointToIndex];
-
-                var tFrom = TimesAtVelocityPoints.ElementAtOrDefault(pointFromIndex - 1);
-                var tInRamp = t - tFrom;
-
-                if (pointFrom.Velocity == pointTo.Velocity)
-                {
-                    v = pointFrom.Velocity;
-                    s = tInRamp * v;
-                }
-                else
-                {
-                    var rampresult = RampResults.ElementAtOrDefault(pointFromIndex);
-                    RampCalculator.CalculateStatus(rampresult, tInRamp, out _, out _, out v, out s);
-                }
-
-                s += pointFrom.Distance;
-            }
-#pragma warning disable CS0168 // exception object used for debugging
-            catch (ArgumentOutOfRangeException ex)
-#pragma warning restore CS0168
+            if (t > TimesAtVelocityPoints.Last())
             {
                 v = 0;
                 s = 0;
+                return;
             }
+
+            var pointToIndex = TimesAtVelocityPoints.FindIndex(tAtPoint => tAtPoint > t) + 1;
+            var pointFromIndex = pointToIndex - 1;
+
+            var pointFrom = VelocityProfilePoints[pointFromIndex];
+            var pointTo = VelocityProfilePoints[pointToIndex];
+
+            var tFrom = TimesAtVelocityPoints.ElementAtOrDefault(pointFromIndex - 1);
+            var tInRamp = t - tFrom;
+
+            if (pointFrom.Velocity == pointTo.Velocity)
+            {
+                v = pointFrom.Velocity;
+                s = tInRamp * v;
+            }
+            else
+            {
+                var rampresult = RampResults.ElementAtOrDefault(pointFromIndex);
+                RampCalculator.CalculateStatus(rampresult, tInRamp, out _, out _, out v, out s);
+            }
+
+            s += pointFrom.Distance;
         }
 
         private void CalculateProfile()
@@ -187,7 +177,7 @@ namespace Point2Point.JointMotion
             }
 
             VelocityProfilePoints = profilePoints;
-            RampResults = rampResults; 
+            RampResults = rampResults;
             TimesAtVelocityPoints = times;
             TotalDuration = timeSum;
 
