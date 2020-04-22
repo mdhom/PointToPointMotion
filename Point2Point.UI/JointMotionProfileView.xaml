@@ -16,6 +16,7 @@
 
         <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
             <Button Content="Random" Command="{Binding RandomCommand}" />
+            <Button Content="RandomTest" Command="{Binding RandomTestCommand}" />
             <Button Content="Recalc" Command="{Binding RecalcCommand}" />
             <Button Content="Save" Command="{Binding SaveCommand}" />
             <Button Content="Load" Command="{Binding LoadCommand}" />

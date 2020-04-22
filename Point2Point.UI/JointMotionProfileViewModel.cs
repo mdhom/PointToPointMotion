@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using System.Windows.Data;
 using System.Windows.Input;
 using Microsoft.Win32;
@@ -46,6 +47,7 @@ namespace Point2Point.UI
         }
 
         public ICommand RandomCommand { get; }
+        public ICommand RandomTestCommand { get; }
         public ICommand RecalcCommand { get; }
         public ICommand SaveCommand { get; }
         public ICommand LoadCommand { get; }
@@ -71,6 +73,18 @@ namespace Point2Point.UI
                 }
                 _randomConstraints = new ConstraintsCollection(segments);
                 Update(_randomConstraints);
+            });
+
+            RandomTestCommand = new RelayCommand(() =>
+            {
+                Task.Run(async () =>
+                {
+                    while(true)
+                    {
+                        RandomCommand.Execute(null);
+                        await Task.Delay(200);
+                    }
+                });
             });
 
             RecalcCommand = new RelayCommand(() =>
