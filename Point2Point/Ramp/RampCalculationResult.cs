@@ -1,7 +1,9 @@
 ﻿namespace Shuttles.Base.Devices.Shuttles.Motion.Ramp
 {
-    public class RampCalculationResult
+    public struct RampCalculationResult
     {
+        public bool Flat { get; set; }
+
         public RampMotionParameter Parameters { get; set; }
 
         public double vFrom { get; set; }

@@ -108,8 +108,14 @@ namespace Shuttles.Base.Devices.Shuttles.Motion.Ramp
                 vFrom = InitialVelocity,
                 vTo = targetVelocity,
                 //1. Bestimmung ob Bremsen oder Beschleuningen
-                MotionState = targetVelocity < InitialVelocity ? RampMotionState.Brake : RampMotionState.Accelerate
+                MotionState = targetVelocity < InitialVelocity ? RampMotionState.Brake : RampMotionState.Accelerate,
+                Flat = Math.Abs(InitialVelocity - targetVelocity) < 1e-8
             };
+
+            if (result.Flat)
+            {
+                return result;
+            }
 
             var decMax = MotionParameter.MaximumDecceleration;
             var jPos = MotionParameter.PositiveJerk;

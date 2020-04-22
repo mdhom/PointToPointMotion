@@ -2,7 +2,7 @@
 
 namespace Shuttles.Base.Devices.Shuttles.Motion.Ramp
 {
-    public class RampMotionParameter
+    public struct RampMotionParameter
     {
         public double PositiveJerk { get; set; }
         public double NegativeJerk { get; set; }

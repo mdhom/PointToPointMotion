@@ -1,10 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Windows.Data;
 using System.Windows.Input;
 using Microsoft.Win32;
 using Newtonsoft.Json;
@@ -79,7 +77,7 @@ namespace Point2Point.UI
             {
                 Task.Run(async () =>
                 {
-                    while(true)
+                    while (true)
                     {
                         RandomCommand.Execute(null);
                         await Task.Delay(200);
@@ -140,7 +138,7 @@ namespace Point2Point.UI
             {
                 DrawRawConstraints(constraintsCollection, plotModel);
             }
-            
+
             DrawEffectiveConstraints(constraintsCollection, plotModel);
 
             try
@@ -202,7 +200,7 @@ namespace Point2Point.UI
                 ItemsSource = new List<DataPoint>()
             };
 
-            foreach (var point in jointMotionProfile.VelocityPoints)
+            foreach (var point in jointMotionProfile.VelocityProfilePoints)
             {
                 (jointSerie.ItemsSource as List<DataPoint>).Add(new DataPoint(point.Distance, point.Velocity));
             }
@@ -246,6 +244,7 @@ namespace Point2Point.UI
                     }
                     catch (Exception ex)
                     {
+                        Console.WriteLine($"{ex.Message}\r\n{ex.StackTrace}");
                         break;
                     }
                 }
@@ -254,6 +253,7 @@ namespace Point2Point.UI
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"{ex.Message}\r\n{ex.StackTrace}");
             }
         }
 

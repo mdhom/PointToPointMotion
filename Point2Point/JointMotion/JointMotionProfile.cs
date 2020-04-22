@@ -8,13 +8,12 @@ namespace Point2Point.JointMotion
     public class JointMotionProfile
     {
         private readonly RampMotionParameter _rampParameters;
+
         public List<VelocityConstraint> EffectiveConstraints { get; }
-        public List<VelocityPoint> VelocityPoints { get; }
-        public List<double> TimesAtVelocityPoints { get; }
-
-        private List<RampCalculationResult> _rampResults = new List<RampCalculationResult>();
-
-        public double TotalDuration => TimesAtVelocityPoints.Last();
+        public List<VelocityPoint> VelocityProfilePoints { get; private set; }
+        public List<RampCalculationResult> RampResults { get; private set; }
+        public List<double> TimesAtVelocityPoints { get; private set; }
+        public double TotalDuration { get; private set; }
 
         public JointMotionProfile(ConstraintsCollection constraints, P2PParameters parameters)
         {
@@ -22,14 +21,7 @@ namespace Point2Point.JointMotion
 
             EffectiveConstraints = constraints.GetEffectiveConstraints();
 
-            VelocityPoints = CalculateProfile();
-
-            TimesAtVelocityPoints = CalculateTimesAtVelocityPoints();
-
-            if (double.IsNaN(TotalDuration) || double.IsInfinity(TotalDuration))
-            {
-                throw new InvalidOperationException($"Something went wrong");
-            }
+            CalculateProfile();
         }
 
         public void GetStatus(double t, out double v, out double s)
@@ -46,11 +38,8 @@ namespace Point2Point.JointMotion
                 var pointToIndex = TimesAtVelocityPoints.FindIndex(tAtPoint => tAtPoint > t) + 1;
                 var pointFromIndex = pointToIndex - 1;
 
-                var pointFrom = VelocityPoints[pointFromIndex];
-                var pointTo = VelocityPoints[pointToIndex];
-
-                var vFrom = pointFrom.Velocity;
-                var vTo = pointTo.Velocity;
+                var pointFrom = VelocityProfilePoints[pointFromIndex];
+                var pointTo = VelocityProfilePoints[pointToIndex];
 
                 var tFrom = TimesAtVelocityPoints.ElementAtOrDefault(pointFromIndex - 1);
                 var tInRamp = t - tFrom;
@@ -58,21 +47,15 @@ namespace Point2Point.JointMotion
                 if (pointFrom.Velocity == pointTo.Velocity)
                 {
                     v = pointFrom.Velocity;
-                    s = pointFrom.Distance + tInRamp * v;
+                    s = tInRamp * v;
                 }
                 else
                 {
-                    var rampresult = _rampResults.ElementAtOrDefault(pointFromIndex);
-                    if (rampresult == default)
-                    {
-                        rampresult = RampCalculator.Calculate(vFrom, vTo, _rampParameters);
-                        _rampResults.Add(rampresult);
-                    }
-
+                    var rampresult = RampResults.ElementAtOrDefault(pointFromIndex);
                     RampCalculator.CalculateStatus(rampresult, tInRamp, out _, out _, out v, out s);
-
-                    s += pointFrom.Distance;
                 }
+
+                s += pointFrom.Distance;
             }
 #pragma warning disable CS0168 // exception object used for debugging
             catch (ArgumentOutOfRangeException ex)
@@ -83,31 +66,7 @@ namespace Point2Point.JointMotion
             }
         }
 
-        private List<double> CalculateTimesAtVelocityPoints()
-        {
-            var times = new List<double>();
-            for (var i = 1; i < VelocityPoints.Count; i++)
-            {
-                var pointFrom = VelocityPoints[i - 1];
-                var pointTo = VelocityPoints[i];
-
-                if (pointFrom.Velocity == pointTo.Velocity)
-                {
-                    // constant motion
-                    times.Add(times.LastOrDefault() + (pointTo.Distance - pointFrom.Distance) / pointTo.Velocity);
-                }
-                else
-                {
-                    // acc-/deceleration
-                    var timeForAccDec = RampCalculator.CalculateTimeNeeded(pointFrom.Velocity, pointTo.Velocity, _rampParameters);
-                    times.Add(times.LastOrDefault() + timeForAccDec);
-                }
-            }
-
-            return times;
-        }
-
-        private List<VelocityPoint> CalculateProfile()
+        private void CalculateProfile()
         {
             var profilePoints = new List<VelocityPoint>()
             {
@@ -124,8 +83,7 @@ namespace Point2Point.JointMotion
                 var startVelocity = profilePoints.Last().Velocity;
                 var targetVelocity = constraint.MaximumVelocity;
 
-                var direction = GetAccDecDirection(startVelocity, targetVelocity);
-                if (direction == AccDecDirection.Constant || RampCalculator.IsReachable(startVelocity, targetVelocity, availableDistance, _rampParameters))
+                if (AreSameVelocities(startVelocity, targetVelocity) || RampCalculator.IsReachable(startVelocity, targetVelocity, availableDistance, _rampParameters))
                 {
                     // maximum allowed velocity can be reached
                     var distanceForFullAcc = RampCalculator.CalculateDistanceNeeded(startVelocity, constraint.MaximumVelocity, _rampParameters);
@@ -199,38 +157,44 @@ namespace Point2Point.JointMotion
                 }
             }
 
+            // remove ProfilePoints with same distance and velocity
+            profilePoints = profilePoints.DistinctBy(pp => new { pp.Distance, pp.Velocity }).ToList();
+
+            // Calculate ramp results and times
+            var rampResults = new List<RampCalculationResult>();
+            var times = new List<double>();
+            var timeSum = 0.0;
             for (var i = 0; i < profilePoints.Count - 1; i++)
             {
-                if (profilePoints[i].Distance == profilePoints[i + 1].Distance)
+                var pFrom = profilePoints[i];
+                var pTo = profilePoints[i + 1];
+
+                var ramp = RampCalculator.Calculate(pFrom.Velocity, pTo.Velocity, _rampParameters);
+                rampResults.Add(ramp);
+
+                if (!ramp.Flat && Math.Abs(ramp.TotalDistance - (pTo.Distance - pFrom.Distance)) > 1e-8)
                 {
-                    if (profilePoints[i].Velocity == profilePoints[i + 1].Velocity)
-                    {
-                        profilePoints.RemoveAt(i);
-                        i--;
-                    }
-                    else
-                    {
-                        //SPRUNG!!!
-                    }
+                    // Ouch!
                 }
+
+                var duration = ramp.Flat ? (pTo.Distance - pFrom.Distance) / pTo.Velocity : ramp.TotalDuration;
+                if (double.IsNaN(duration) || double.IsInfinity(duration))
+                {
+                    throw new JointMotionCalculationException($"Invalid duration ({duration}) on point {i} at {pFrom.Distance}");
+                }
+                timeSum += duration;
+                times.Add(timeSum);
             }
 
-            return profilePoints;
-        }
+            VelocityProfilePoints = profilePoints;
+            RampResults = rampResults; 
+            TimesAtVelocityPoints = times;
+            TotalDuration = timeSum;
 
-        private static AccDecDirection GetAccDecDirection(double vFrom, double vTo)
-        {
-            if (vFrom == vTo)
+
+            if (double.IsNaN(TotalDuration) || double.IsInfinity(TotalDuration))
             {
-                return AccDecDirection.Constant;
-            }
-            else if (vFrom < vTo)
-            {
-                return AccDecDirection.Acc;
-            }
-            else
-            {
-                return AccDecDirection.Dec;
+                throw new JointMotionCalculationException($"Invalid TotalDuration ({TotalDuration})");
             }
         }
 
@@ -263,15 +227,10 @@ namespace Point2Point.JointMotion
                 // Don't know if this could happen ???
             }
 
-            RemoveVelocityPointsFromLastConstraint();
+            var correspondingConstraint = velocityPoints.Last().CorrespondingConstraint;
+            velocityPoints.RemoveAll(vp => vp.CorrespondingConstraint == correspondingConstraint);
 
             index -= 2;
-
-            void RemoveVelocityPointsFromLastConstraint()
-            {
-                var correspondingConstraint = velocityPoints.Last().CorrespondingConstraint;
-                velocityPoints.RemoveAll(vp => vp.CorrespondingConstraint == correspondingConstraint);
-            }
         }
 
         private void IterativlyFindSteppedDownVelocity(double lastVelocity, VelocityConstraint constraint, double availableDistance, double startDistance, double targetVelocity, List<VelocityPoint> velocityPoints, ref int index)
@@ -281,11 +240,11 @@ namespace Point2Point.JointMotion
             while (true)
             {
                 targetAccVelocity -= stepDownSize;
-                if (targetAccVelocity < lastVelocity)
+                if (targetAccVelocity <= lastVelocity)
                 {
                     // try with lastVelocity last time because we may have overstepped
                     // that critial point
-                    if (!TryAddVelocityPoints(lastVelocity))
+                    if (lastVelocity == 0 || !TryAddVelocityPoints(lastVelocity))
                     {
                         // did not find a possible targetVelocity ->
                         // iterave search failed -> step back
@@ -318,6 +277,7 @@ namespace Point2Point.JointMotion
                     velocityPoints.Add(new VelocityPoint(startDistance + distanceForSDAcc, targetVel, constraint));
                     velocityPoints.Add(new VelocityPoint(startDistance + (availableDistance - distanceForBrakingFromSD), targetVel, constraint));
                     velocityPoints.Add(new VelocityPoint(startDistance + availableDistance, targetVelocity, constraint));
+
                     return true;
                 }
                 else if (distanceForSDAcc + distanceForBrakingFromSD == availableDistance)
@@ -325,11 +285,15 @@ namespace Point2Point.JointMotion
                     // constant velocity will not be reached but maximum velocity => exact peak
                     velocityPoints.Add(new VelocityPoint(startDistance + distanceForSDAcc, targetVel, constraint));
                     velocityPoints.Add(new VelocityPoint(startDistance + availableDistance, targetVelocity, constraint));
+
                     return true;
                 }
 
                 return false;
             }
         }
+
+        private static bool AreSameVelocities(double velo1, double velo2)
+            => Math.Abs(velo1 - velo2) < 1e-8;
     }
 }
