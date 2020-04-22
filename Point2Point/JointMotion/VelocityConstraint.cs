@@ -17,5 +17,10 @@
 
         public bool Contains(double distance) 
             => Start <= distance && End > distance;
+
+        public VelocityConstraint Copy()
+        {
+            return new VelocityConstraint(Start, Length, MaximumVelocity);
+        }
     }
 }

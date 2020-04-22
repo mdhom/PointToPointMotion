@@ -32,11 +32,27 @@ namespace Point2Point.JointMotion
         {
         }
 
+        public double GetV(double t)
+        {
+            GetStatus(t, out var v, out _);
+            return v;
+        }
+
+        public double GetS(double t)
+        {
+            GetStatus(t, out _, out var s);
+            return s;
+        }
+
         public void GetStatus(double t, out double v, out double s)
         {
             t = Math.Min(t, TotalDuration);
 
             var pointToIndex = TimesAtVelocityPoints.FindIndex(tAtPoint => tAtPoint > t) + 1;
+            if (pointToIndex == 0)
+            {
+                pointToIndex = VelocityProfilePoints.Count - 1;
+            }
             var pointFromIndex = pointToIndex - 1;
 
             var pointFrom = VelocityProfilePoints[pointFromIndex];
@@ -61,7 +77,8 @@ namespace Point2Point.JointMotion
 
         private void CalculateProfile(ConstraintsCollection constraints)
         {
-            EffectiveConstraints = constraints.GetEffectiveConstraints();
+            var effectiveConstraintsOriginal = constraints.GetEffectiveConstraints();
+            EffectiveConstraints = effectiveConstraintsOriginal.Select(c => c.Copy()).ToList();
 
             var profilePoints = new List<VelocityPoint>()
             {
@@ -185,7 +202,6 @@ namespace Point2Point.JointMotion
             RampResults = rampResults;
             TimesAtVelocityPoints = times;
             TotalDuration = timeSum;
-
 
             if (double.IsNaN(TotalDuration) || double.IsInfinity(TotalDuration))
             {
