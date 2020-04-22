@@ -1,10 +1,10 @@
 ﻿namespace Point2Point.JointMotion
 {
-    public struct VelocityPoint
+    public class VelocityPoint
     {
-        public double Distance { get; }
-        public double Velocity { get; }
-        public VelocityConstraint CorrespondingConstraint { get; }
+        public double Distance { get; set; }
+        public double Velocity { get; set; }
+        public VelocityConstraint CorrespondingConstraint { get; set; }
 
         public VelocityPoint(double distance, double velocity, VelocityConstraint correspondingConstraint)
         {
