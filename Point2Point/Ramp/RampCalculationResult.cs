@@ -9,9 +9,9 @@
         public double vFrom { get; set; }
         public double vTo { get; set; }
 
-        public double t1 { get; set; }
-        public double t2 { get; set; }
-        public double t3 { get; set; }
+        public double Phase1Duration { get; set; }
+        public double Phase2Duration { get; set; }
+        public double Phase3Duration { get; set; }
 
         public double TotalDistance { get; set; }
         public double TotalDuration { get; set; }

@@ -34,10 +34,9 @@ namespace Shuttles.Base.Devices.Shuttles.Motion.Ramp
 
         public static void CalculateStatus(RampCalculationResult ramp, double t, out double j, out double a, out double v, out double s)
         {
-            // different understandings between rampCalculator t's and mine
-            var t1 = ramp.t1;
-            var t2 = t1 + ramp.t2;
-            var t3 = t2 + ramp.t3;
+            var t1 = ramp.Phase1Duration;
+            var t2 = t1 + ramp.Phase2Duration;
+            var t3 = t2 + ramp.Phase3Duration;
 
             var jMax = ramp.MotionState == RampMotionState.Accelerate ? ramp.Parameters.PositiveJerk : ramp.Parameters.NegativeJerk;
             var v0 = ramp.vFrom;
@@ -215,9 +214,10 @@ namespace Shuttles.Base.Devices.Shuttles.Motion.Ramp
 
             result.TotalDistance = s1 + s2 + s3;
             result.TotalDuration = t1 + t2 + t3;
-            result.t1 = t1;
-            result.t2 = t2;
-            result.t3 = t3;
+            result.Phase1Duration = t1;
+            result.Phase2Duration = t2;
+            result.Phase3Duration = t3;
+
             return result;
         }
 
