@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using Microsoft.Win32;
@@ -45,13 +47,23 @@ namespace Point2Point.UI
             set => ChangeProperty(value, ref _drawVelocityPoints, () => Update(_randomConstraints));
         }
 
+        private int _historyNavigationIndex = -1;
+        public int HistoryNavigationIndex
+        {
+            get => _historyNavigationIndex;
+            set => ChangeProperty(value, ref _historyNavigationIndex);
+        }
+
         public ICommand RandomCommand { get; }
         public ICommand RandomTestCommand { get; }
         public ICommand RecalcCommand { get; }
         public ICommand SaveCommand { get; }
         public ICommand LoadCommand { get; }
+        public ICommand NavigateHistoryCommand { get; }
+        public ICommand StepCommand { get; }
 
         private ConstraintsCollection _randomConstraints;
+        private SemaphoreSlim _stepSemaphore = new SemaphoreSlim(0, 1);
 
         public JointMotionProfileViewModel()
         {
@@ -81,7 +93,7 @@ namespace Point2Point.UI
                     while (true)
                     {
                         RandomCommand.Execute(null);
-                        await Task.Delay(200);
+                        await Task.Delay(500);
                     }
                 });
             });
@@ -90,6 +102,7 @@ namespace Point2Point.UI
             {
                 if (_randomConstraints != null)
                 {
+                    HistoryNavigationIndex = -1;
                     Update(_randomConstraints);
                 }
             });
@@ -111,6 +124,19 @@ namespace Point2Point.UI
                     _randomConstraints = JsonConvert.DeserializeObject<ConstraintsCollection>(jsonContent);
                     Update(_randomConstraints);
                 }
+            });
+
+            NavigateHistoryCommand = new RelayCommand<int>((d) =>
+            {
+                HistoryNavigationIndex += d;
+                Update(_randomConstraints);
+            });
+
+            StepCommand = new RelayCommand(() =>
+            {
+                _stepSemaphore.Release();
+                HistoryNavigationIndex++;
+                Update(_randomConstraints);
             });
         }
 
@@ -152,14 +178,19 @@ namespace Point2Point.UI
 
                 var profile = new JointMotionProfile(parameters, constraintsCollection);
 
-                if (DrawVelocityPoints)
+                if (profile.VelocityProfilePoints != null && DrawVelocityPoints)
                 {
                     DrawVelocityPointsProfile(profile, plotModel);
                 }
 
-                if (DrawMotionProfile)
+                if (profile.TotalDuration != 0 && DrawMotionProfile)
                 {
                     DrawJointMotionProfile(profile, plotModel);
+                }
+
+                if (HistoryNavigationIndex >= 0 && HistoryNavigationIndex < profile.EffectiveConstraintsHistory.Count)
+                {
+                    DrawEffectiveConstraintsHistory(profile.EffectiveConstraintsHistory[HistoryNavigationIndex], plotModel);
                 }
             }
             catch (Exception ex)
@@ -262,6 +293,24 @@ namespace Point2Point.UI
             {
                 Console.WriteLine($"{ex.Message}\r\n{ex.StackTrace}");
             }
+        }
+
+        private static void DrawEffectiveConstraintsHistory(List<VelocityConstraint> historyEntry, PlotModel plotModel)
+        {
+            var effectiveSerie = new LineSeries()
+            {
+                Title = $"History",
+                Color = OxyColors.Orange,
+                ItemsSource = new List<DataPoint>()
+            };
+
+            foreach (var segment in historyEntry)
+            {
+                (effectiveSerie.ItemsSource as List<DataPoint>).Add(new DataPoint(segment.Start, segment.MaximumVelocity));
+                (effectiveSerie.ItemsSource as List<DataPoint>).Add(new DataPoint(segment.End, segment.MaximumVelocity));
+            }
+
+            plotModel.Series.Add(effectiveSerie);
         }
 
         private static void DrawEffectiveConstraints(ConstraintsCollection constraintsCollection, PlotModel plotModel)

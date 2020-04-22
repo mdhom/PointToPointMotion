@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Shuttles.Base.Devices.Shuttles.Motion.Ramp;
 
 namespace Point2Point.JointMotion
@@ -15,11 +17,48 @@ namespace Point2Point.JointMotion
         public List<double> TimesAtVelocityPoints { get; private set; }
         public double TotalDuration { get; private set; }
 
+        public List<List<VelocityConstraint>> EffectiveConstraintsHistory { get; private set; }
+
         public JointMotionProfile(RampMotionParameter parameters, ConstraintsCollection constraints)
         {
             Parameters = parameters;
 
-            CalculateProfile(constraints);
+            EffectiveConstraints = constraints.GetEffectiveConstraints();
+
+            EffectiveConstraintsHistory = new List<List<VelocityConstraint>>();
+            while (true)
+            {
+                EffectiveConstraintsHistory.Add(EffectiveConstraints.Select(ec => ec.Copy()).ToList());
+                if (CalculateProfile())
+                {
+                    return;
+                }
+            }
+        }
+
+        public JointMotionProfile(RampMotionParameter parameters, ConstraintsCollection constraints, SemaphoreSlim stepsSemaphore)
+        {
+            Parameters = parameters;
+
+            EffectiveConstraints = constraints.GetEffectiveConstraints();
+
+            EffectiveConstraintsHistory = new List<List<VelocityConstraint>>();
+
+            Task.Run(async () =>
+            {
+                while (true)
+                {
+                    EffectiveConstraintsHistory.Add(EffectiveConstraints.Select(ec => ec.Copy()).ToList());
+                    if (CalculateProfile())
+                    {
+                        return;
+                    }
+                    else
+                    {
+                        await stepsSemaphore.WaitAsync();
+                    }
+                }
+            });
         }
 
         public JointMotionProfile(RampMotionParameter parameters, IEnumerable<VelocityConstraint> constraints)
@@ -75,11 +114,8 @@ namespace Point2Point.JointMotion
             s += pointFrom.Distance;
         }
 
-        private void CalculateProfile(ConstraintsCollection constraints)
+        private bool CalculateProfile()
         {
-            var effectiveConstraintsOriginal = constraints.GetEffectiveConstraints();
-            EffectiveConstraints = effectiveConstraintsOriginal.Select(c => c.Copy()).ToList();
-
             var profilePoints = new List<VelocityPoint>()
             {
                 new VelocityPoint(0,0, null)
@@ -90,83 +126,180 @@ namespace Point2Point.JointMotion
                 var constraint = EffectiveConstraints[i];
                 var nextConstraint = EffectiveConstraints.ElementAtOrDefault(i + 1);
 
+                var v0 = profilePoints.Last().Velocity;
+                var v1 = constraint.MaximumVelocity;
+                var v2 = nextConstraint?.MaximumVelocity ?? 0.0;
+
                 var availableDistance = constraint.Length;
                 var startDistance = profilePoints.Max(v => v.Distance);
-                var startVelocity = profilePoints.Last().Velocity;
-                var targetVelocity = constraint.MaximumVelocity;
 
-                if (AreSameVelocities(startVelocity, targetVelocity) || RampCalculator.IsReachable(startVelocity, targetVelocity, availableDistance, Parameters))
+                var situation = GetSituation(v0, constraint, nextConstraint);
+                if (situation == 7)
                 {
-                    // maximum allowed velocity can be reached
-                    var distanceForFullAcc = RampCalculator.CalculateDistanceNeeded(startVelocity, constraint.MaximumVelocity, Parameters);
-                    if (nextConstraint != null && nextConstraint.MaximumVelocity > constraint.MaximumVelocity)
+                    profilePoints.Add(new VelocityPoint(startDistance + availableDistance, v1, constraint));
+                }
+                else if (situation == 8)
+                {
+                    var brakeDistance = RampCalculator.CalculateDistanceNeeded(v1, v2, Parameters);
+                    if (brakeDistance <= availableDistance)
                     {
-                        // next constraint allows higher velocity 
-                        // -> drive this constraint until end with constant velocity because it will be accelerated afterwards
-                        profilePoints.Add(new VelocityPoint(startDistance + distanceForFullAcc, constraint.MaximumVelocity, constraint));
-                        profilePoints.Add(new VelocityPoint(startDistance + availableDistance, constraint.MaximumVelocity, constraint));
+                        profilePoints.Add(new VelocityPoint(startDistance + (availableDistance - brakeDistance), v1, constraint));
+                        profilePoints.Add(new VelocityPoint(startDistance + availableDistance, v2, constraint));
                     }
                     else
                     {
-                        // next constraint is below current constraint -> braking is necessary 
-                        // OR
-                        // no next constraint available -> brake to zero
-                        targetVelocity = nextConstraint?.MaximumVelocity ?? 0.0;
-                        var distanceForBraking = RampCalculator.CalculateDistanceNeeded(constraint.MaximumVelocity, targetVelocity, Parameters);
-
-                        if (distanceForFullAcc + distanceForBraking < availableDistance)
-                        {
-                            // constant velocity will be reached
-                            profilePoints.Add(new VelocityPoint(startDistance + distanceForFullAcc, constraint.MaximumVelocity, constraint));
-                            profilePoints.Add(new VelocityPoint(startDistance + (availableDistance - distanceForBraking), constraint.MaximumVelocity, constraint));
-                            profilePoints.Add(new VelocityPoint(startDistance + availableDistance, targetVelocity, constraint));
-                        }
-                        else if (distanceForFullAcc + distanceForBraking == availableDistance)
-                        {
-                            // constant velocity will not be reached but maximum velocity => exact peak
-                            profilePoints.Add(new VelocityPoint(startDistance + distanceForFullAcc, constraint.MaximumVelocity, constraint));
-                            profilePoints.Add(new VelocityPoint(startDistance + availableDistance, targetVelocity, constraint));
-                        }
-                        else
-                        {
-                            // we can not fully accelerate because we need to brake earlier than possible when only accelerating
-                            // UNTIL I KNOW BETTER: iterative approach
-                            IterativlyFindSteppedDownVelocity(startVelocity, constraint, availableDistance, startDistance, targetVelocity, profilePoints, ref i);
-                        }
+                        MergeWithPreviousConstraint(constraint, profilePoints, i);
+                        return false;
                     }
                 }
-                else if (nextConstraint != null)
+                else if (situation == 3)
                 {
-                    // maximum allowed velocity can't be reached and there is at least one constraint to follow
-                    if (!RampCalculator.IsReachable(startVelocity, nextConstraint.MaximumVelocity, availableDistance + nextConstraint.Length, Parameters))
+                    var distanceForAcc = RampCalculator.CalculateDistanceNeeded(v0, v1, Parameters);
+                    if (distanceForAcc < availableDistance)
                     {
-                        // next constraint can not be reached from current constraint
-                        if (nextConstraint.MaximumVelocity < startVelocity)
-                        {
-                            // next constraint is a step downwards, so there could be a
-                            // critical intersection with the constraints
-                            // -> step back and try earlier braking
-                            MergeWithPreviousConstraint(constraint, profilePoints, ref i);
-                        }
-                        else
-                        {
-                            // next constraint is a step upwards, so no 
-                            // critical intersection with constraints can happen
-                            // -> merge this constraint with next constraint for longer acceleration distance
-                            MergeWithNextConstraint(constraint, ref i);
-                        }
+                        profilePoints.Add(new VelocityPoint(startDistance + distanceForAcc, v1, constraint));
+                        profilePoints.Add(new VelocityPoint(startDistance + availableDistance, v1, constraint));
                     }
                     else
                     {
-                        // after this constraint, next constraint is lower -> try find maximum reachable velocity
-                        IterativlyFindSteppedDownVelocity(startVelocity, constraint, availableDistance, startDistance, nextConstraint.MaximumVelocity, profilePoints, ref i);
+                        MergeWithPreviousConstraint(constraint, profilePoints, i);
                     }
                 }
-                else
+                else if (!IterativlyFindSteppedDownVelocity(v0, constraint, v2, availableDistance, startDistance, profilePoints))
                 {
-                    // no constraint any more -> brake to zero
-                    IterativlyFindSteppedDownVelocity(startVelocity, constraint, availableDistance, startDistance, 0.0, profilePoints, ref i);
+                    switch (situation)
+                    {
+                        case 1:
+                        case 4:
+                            MergeWithNextConstraint(constraint, i);
+                            break;
+                        case 2:
+                        case 3:
+                        case 5:
+                        case 6:
+                            MergeWithPreviousConstraint(constraint, profilePoints, i);
+                            break;
+                        case 7:
+                            break;
+                        case 8:
+                            break;
+                        default:
+                            throw new JointMotionCalculationException($"Unknown situation id {situation}");
+                    }
+                    return false;
                 }
+
+                //var targetVelocity = constraint.MaximumVelocity;
+
+                //if (AreSameVelocities(startVelocity, targetVelocity) || RampCalculator.IsReachable(startVelocity, targetVelocity, availableDistance, Parameters))
+                //{
+                //    // maximum allowed velocity can be reached
+                //    var distanceForFullAcc = RampCalculator.CalculateDistanceNeeded(startVelocity, constraint.MaximumVelocity, Parameters);
+                //    if (nextConstraint != null && nextConstraint.MaximumVelocity > constraint.MaximumVelocity)
+                //    {
+                //        // next constraint allows higher velocity 
+                //        // -> drive this constraint until end with constant velocity because it will be accelerated afterwards
+                //        profilePoints.Add(new VelocityPoint(startDistance + distanceForFullAcc, constraint.MaximumVelocity, constraint));
+                //        profilePoints.Add(new VelocityPoint(startDistance + availableDistance, constraint.MaximumVelocity, constraint));
+                //    }
+                //    else
+                //    {
+                //        // next constraint is below current constraint -> braking is necessary 
+                //        // OR
+                //        // no next constraint available -> brake to zero
+                //        targetVelocity = nextConstraint?.MaximumVelocity ?? 0.0;
+                //        var distanceForBraking = RampCalculator.CalculateDistanceNeeded(constraint.MaximumVelocity, targetVelocity, Parameters);
+
+                //        if (distanceForFullAcc + distanceForBraking < availableDistance)
+                //        {
+                //            // constant velocity will be reached
+                //            profilePoints.Add(new VelocityPoint(startDistance + distanceForFullAcc, constraint.MaximumVelocity, constraint));
+                //            profilePoints.Add(new VelocityPoint(startDistance + (availableDistance - distanceForBraking), constraint.MaximumVelocity, constraint));
+                //            profilePoints.Add(new VelocityPoint(startDistance + availableDistance, targetVelocity, constraint));
+                //        }
+                //        else if (distanceForFullAcc + distanceForBraking == availableDistance)
+                //        {
+                //            // constant velocity will not be reached but maximum velocity => exact peak
+                //            profilePoints.Add(new VelocityPoint(startDistance + distanceForFullAcc, constraint.MaximumVelocity, constraint));
+                //            profilePoints.Add(new VelocityPoint(startDistance + availableDistance, targetVelocity, constraint));
+                //        }
+                //        else
+                //        {
+                //            // we can not fully accelerate because we need to brake earlier than possible when only accelerating
+                //            // UNTIL I KNOW BETTER: iterative approach
+                //            if (constraint.MaximumVelocity >= startVelocity && targetVelocity < startVelocity)
+                //            {
+                //                MergeWithPreviousConstraint(constraint, profilePoints, ref i);
+                //                return false;
+                //            }
+                //            else
+                //            {
+                //                if (!IterativlyFindSteppedDownVelocity(startVelocity, constraint, availableDistance, startDistance, targetVelocity, profilePoints, ref i))
+                //                {
+                //                    return false;
+                //                }
+                //            }
+                //        }
+                //    }
+                //}
+                //else if (nextConstraint != null)
+                //{
+                //    // maximum allowed velocity can't be reached and there is at least one constraint to follow
+                //    var firstStepUp = constraint.MaximumVelocity > startVelocity;
+                //    var secondStepUp = nextConstraint.MaximumVelocity > constraint.MaximumVelocity;
+                //    if (firstStepUp)
+                //    {
+                //        if (secondStepUp)
+                //        {
+                //            MergeWithPreviousConstraint(constraint, profilePoints, ref i);
+                //            return false;
+                //        }
+                //        else
+                //        {
+                //            var nextReachable = RampCalculator.IsReachable(startVelocity, nextConstraint.MaximumVelocity, availableDistance, Parameters);
+                //            if (nextReachable)
+                //            {
+                //                if (!IterativlyFindSteppedDownVelocity(startVelocity, constraint, availableDistance, startDistance, nextConstraint.MaximumVelocity, profilePoints, ref i))
+                //                {
+                //                    return false;
+                //                }
+                //            }
+                //            else
+                //            {
+                //                if (nextConstraint.MaximumVelocity < startVelocity)
+                //                {
+                //                    MergeWithPreviousConstraint(constraint, profilePoints, ref i);
+                //                }
+                //                else
+                //                {
+                //                    MergeWithNextConstraint(constraint, ref i);
+                //                }
+                //                return false;
+                //            }
+                //        }
+                //    }
+                //    else
+                //    {
+                //        if (!secondStepUp)
+                //        {
+                //            MergeWithPreviousConstraint(constraint, profilePoints, ref i);
+                //            return false;
+                //        }
+                //        else
+                //        {
+                //            MergeWithNextConstraint(constraint, ref i);
+                //            return false;
+                //        }
+                //    }
+                //}
+                //else
+                //{
+                //    // no constraint any more -> brake to zero
+                //    if (!IterativlyFindSteppedDownVelocity(startVelocity, constraint, availableDistance, startDistance, 0.0, profilePoints, ref i))
+                //    {
+                //        return false;
+                //    }
+                //}
             }
 
             // remove ProfilePoints with same distance and velocity
@@ -207,75 +340,128 @@ namespace Point2Point.JointMotion
             {
                 throw new JointMotionCalculationException($"Invalid TotalDuration ({TotalDuration})");
             }
+
+            return true;
+        }
+
+        private int GetSituation(double v0, VelocityConstraint constraint, VelocityConstraint nextConstraint)
+        {
+            var v1 = constraint.MaximumVelocity;
+            var v2 = nextConstraint?.MaximumVelocity ?? 0.0;
+
+            if (v1 == v0)
+            {
+                // situations 7-8
+                if (v1 < v2)
+                {
+                    return 7;
+                }
+                else
+                {
+                    return 8;
+                }
+            }
+            else if (v1 > v0)
+            {
+                // situations 1-3
+                if (v2 < v1 && v2 > v0)
+                {
+                    return 1;
+                }
+                else if (v2 < v1 && v2 < v0)
+                {
+                    return 2;
+                }
+                else
+                {
+                    return 3;
+                }
+            }
+            else
+            {
+                // situations 4-6
+                if (v2 > v1 && v2 < v0)
+                {
+                    return 4;
+                }
+                else if (v2 > v1 && v2 > v0)
+                {
+                    return 5;
+                }
+                else
+                {
+                    return 6;
+                }
+            }
         }
 
         /// <summary>
         /// Removes the given constraint and adds its length to the next constraint.
         /// </summary>
-        private void MergeWithNextConstraint(VelocityConstraint constraint, ref int index)
+        private void MergeWithNextConstraint(VelocityConstraint constraint, int index)
         {
             EffectiveConstraints.RemoveAt(index);
             EffectiveConstraints[index].Start -= constraint.Length;
             EffectiveConstraints[index].Length += constraint.Length;
-
-            index--;
         }
 
         /// <summary>
         /// Removes the given constraint and adds its length to the previous constraint 
         /// => the previous constraint is longer now. Enables earlier braking.
         /// </summary>
-        private void MergeWithPreviousConstraint(VelocityConstraint constraint, List<VelocityPoint> velocityPoints, ref int index)
+        private void MergeWithPreviousConstraint(VelocityConstraint constraint, List<VelocityPoint> velocityPoints, int index)
         {
-            EffectiveConstraints.RemoveAt(index);
-            if (index > 0)
+            const double reduceByDistance = 100;
+            const double reduceByVelocity = 50;
+            if (index == 0)
             {
-                EffectiveConstraints[index - 1].Length += constraint.Length;
-                EffectiveConstraints[index - 1].MaximumVelocity = Math.Min(constraint.MaximumVelocity, EffectiveConstraints[index - 1].MaximumVelocity);
+                // first constraint -> no previous constraint -> try reducing velocity for reachability
+                constraint.MaximumVelocity -= reduceByVelocity;
             }
             else
             {
-                // Don't know if this could happen ???
+                var previousConstraint = EffectiveConstraints[index - 1];
+                if (previousConstraint.MaximumVelocity > constraint.MaximumVelocity && previousConstraint.Length > reduceByDistance)
+                {
+                    constraint.Start -= reduceByDistance;
+                    constraint.Length += reduceByDistance;
+                    previousConstraint.Length -= reduceByDistance;
+                }
+                else if (previousConstraint.MaximumVelocity < constraint.MaximumVelocity && Math.Abs(previousConstraint.MaximumVelocity - constraint.MaximumVelocity) > reduceByVelocity)
+                {
+                    constraint.MaximumVelocity -= reduceByVelocity;
+                }
+                else
+                {
+                    EffectiveConstraints.RemoveAt(index);
+                    previousConstraint.Length += constraint.Length;
+                    previousConstraint.MaximumVelocity = Math.Min(constraint.MaximumVelocity, previousConstraint.MaximumVelocity);
+
+                    var correspondingConstraint = velocityPoints.Last().CorrespondingConstraint;
+                    velocityPoints.RemoveAll(vp => vp.CorrespondingConstraint == correspondingConstraint);
+                }
             }
-
-            var correspondingConstraint = velocityPoints.Last().CorrespondingConstraint;
-            velocityPoints.RemoveAll(vp => vp.CorrespondingConstraint == correspondingConstraint);
-
-            index -= 2;
         }
 
-        private void IterativlyFindSteppedDownVelocity(double lastVelocity, VelocityConstraint constraint, double availableDistance, double startDistance, double targetVelocity, List<VelocityPoint> velocityPoints, ref int index)
+        private bool IterativlyFindSteppedDownVelocity(double lastVelocity, VelocityConstraint constraint, double targetVelocity, double availableDistance, double startDistance, List<VelocityPoint> velocityPoints)
         {
             var targetAccVelocity = constraint.MaximumVelocity;
             var stepDownSize = 5.0;
             while (true)
             {
-                targetAccVelocity -= stepDownSize;
                 if (targetAccVelocity <= lastVelocity)
                 {
                     // try with lastVelocity last time because we may have overstepped
                     // that critial point
-                    if (lastVelocity == 0 || !TryAddVelocityPoints(lastVelocity))
-                    {
-                        // did not find a possible targetVelocity ->
-                        // iterave search failed -> step back
-                        if (targetVelocity > lastVelocity)
-                        {
-                            MergeWithNextConstraint(constraint, ref index);
-                        }
-                        else
-                        {
-                            MergeWithPreviousConstraint(constraint, velocityPoints, ref index);
-                        }
-                    }
-                    return;
+                    return TryAddVelocityPoints(lastVelocity);
                 }
                 else if (TryAddVelocityPoints(targetAccVelocity))
                 {
                     // successfully found a new targetVelocity which allows
                     // for accelerating and braking
-                    break;
+                    return true;
                 }
+                targetAccVelocity -= stepDownSize;
             }
 
             bool TryAddVelocityPoints(double targetVel)
