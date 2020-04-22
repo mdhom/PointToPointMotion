@@ -9,9 +9,6 @@
         Title="Point 2 Point Calculator" WindowState="Maximized">
     <Grid Margin="10">
         <TabControl>
-            <TabItem Header="P2PRampCalculation" Padding="10">
-                <local:P2PRampCalculationView DataContext="{Binding P2PRampCalculation}" />
-            </TabItem>
             <TabItem Header="P2PCalculator" Padding="10">
                 <local:P2PCalculatorView DataContext="{Binding P2PCalculator}" />
             </TabItem>

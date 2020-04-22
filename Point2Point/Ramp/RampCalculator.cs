@@ -64,7 +64,6 @@ namespace Shuttles.Base.Devices.Shuttles.Motion.Ramp
                     }
                     else
                     {
-                        //FUCK!
                         throw new ArgumentOutOfRangeException(nameof(t), $"Given time t ({t:N3}) must be lower than t3 which is {t3:N2} at the moment");
                     }
                 }
