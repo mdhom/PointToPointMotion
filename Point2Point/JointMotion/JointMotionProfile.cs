@@ -26,12 +26,7 @@ namespace Point2Point.JointMotion
 
         public void GetStatus(double t, out double v, out double s)
         {
-            if (t > TimesAtVelocityPoints.Last())
-            {
-                v = 0;
-                s = 0;
-                return;
-            }
+            t = Math.Min(t, TotalDuration);
 
             var pointToIndex = TimesAtVelocityPoints.FindIndex(tAtPoint => tAtPoint > t) + 1;
             var pointFromIndex = pointToIndex - 1;
