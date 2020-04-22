@@ -7,23 +7,29 @@ namespace Point2Point.JointMotion
 {
     public class JointMotionProfile
     {
-        private readonly P2PParameters _parameters;
         private readonly RampMotionParameter _rampParameters;
         public List<VelocityConstraint> EffectiveConstraints { get; }
         public List<VelocityPoint> VelocityPoints { get; }
         public List<double> TimesAtVelocityPoints { get; }
 
+        private List<RampCalculationResult> _rampResults = new List<RampCalculationResult>();
+
         public double TotalDuration => TimesAtVelocityPoints.Last();
 
         public JointMotionProfile(ConstraintsCollection constraints, P2PParameters parameters)
         {
+            _rampParameters = new RampMotionParameter(parameters);
+
             EffectiveConstraints = constraints.GetEffectiveConstraints();
-            _parameters = parameters;
-            _rampParameters = new RampMotionParameter(_parameters);
 
             VelocityPoints = CalculateProfile();
 
             TimesAtVelocityPoints = CalculateTimesAtVelocityPoints();
+
+            if (double.IsNaN(TotalDuration) || double.IsInfinity(TotalDuration))
+            {
+                throw new InvalidOperationException($"Something went wrong");
+            }
         }
 
         public void GetStatus(double t, out double v, out double s)
@@ -49,7 +55,6 @@ namespace Point2Point.JointMotion
                 var tFrom = TimesAtVelocityPoints.ElementAtOrDefault(pointFromIndex - 1);
                 var tInRamp = t - tFrom;
 
-                var distance = pointTo.Distance - pointFrom.Distance;
                 if (pointFrom.Velocity == pointTo.Velocity)
                 {
                     v = pointFrom.Velocity;
@@ -57,11 +62,14 @@ namespace Point2Point.JointMotion
                 }
                 else
                 {
-                    var ramp = RampCalculator.Calculate(vFrom, vTo, _rampParameters);
-                    RampCalculator.CalculateStatus(ramp, tInRamp, out _, out _, out v, out s);
+                    var rampresult = _rampResults.ElementAtOrDefault(pointFromIndex);
+                    if (rampresult == default)
+                    {
+                        rampresult = RampCalculator.Calculate(vFrom, vTo, _rampParameters);
+                        _rampResults.Add(rampresult);
+                    }
 
-                    //var ramp = new P2PRamp(distance, pointFrom.Velocity, pointTo.Velocity, _parameters.JerkMax, _parameters.AccelerationMax);
-                    //ramp.GetStatus(t - tFrom, out _, out _, out v, out s);
+                    RampCalculator.CalculateStatus(rampresult, tInRamp, out _, out _, out v, out s);
 
                     s += pointFrom.Distance;
                 }
