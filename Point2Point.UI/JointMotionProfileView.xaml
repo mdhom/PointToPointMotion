@@ -12,7 +12,8 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
-            <RowDefinition />
+            <RowDefinition Height="2*" />
+            <RowDefinition Height="1*" />
         </Grid.RowDefinitions>
 
         <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
@@ -43,6 +44,9 @@
         </StackPanel>
 
         <oxy:PlotView Grid.Row="1" Model="{Binding PlotModel}">
+        </oxy:PlotView>
+
+        <oxy:PlotView Grid.Row="2" Model="{Binding PlotModelVelocityProfile}">
         </oxy:PlotView>
     </Grid>
 </UserControl>

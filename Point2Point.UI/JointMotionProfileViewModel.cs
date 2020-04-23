@@ -27,6 +27,13 @@ namespace Point2Point.UI
             set => ChangeProperty(value, ref _plotModel);
         }
 
+        private PlotModel _plotModelVelocityProfile;
+        public PlotModel PlotModelVelocityProfile
+        {
+            get => _plotModelVelocityProfile;
+            set => ChangeProperty(value, ref _plotModelVelocityProfile);
+        }
+
         private bool _drawRawSeries;
         public bool DrawRawSeries
         {
@@ -177,7 +184,7 @@ namespace Point2Point.UI
         {
             var plotModel = new PlotModel()
             {
-                Title = "Joint motion"
+                Title = "Joint motion over way [mm]"
             };
 
             plotModel.Axes.Add(new LinearAxis()
@@ -297,6 +304,24 @@ namespace Point2Point.UI
                 ItemsSource = new List<DataPoint>()
             };
 
+            var plotModelVelocityProfile = new PlotModel()
+            {
+                Title = "VelocityProfile over time [s]"
+            };
+
+            plotModelVelocityProfile.Axes.Add(new LinearAxis()
+            {
+                Position = AxisPosition.Left,
+                Minimum = 0,
+                AbsoluteMinimum = 0
+            });
+            var velocityProfileSerie = new LineSeries()
+            {
+                Title = "Profile",
+                Color = OxyColors.Red,
+                ItemsSource = new List<DataPoint>()
+            };
+
             try
             {
                 for (double t = 0; t < jointMotionProfile.TotalDuration; t += 0.01)
@@ -308,6 +333,7 @@ namespace Point2Point.UI
                     }
 
                     (jointSerie.ItemsSource as List<DataPoint>).Add(new DataPoint(s, v));
+                    (velocityProfileSerie.ItemsSource as List<DataPoint>).Add(new DataPoint(t, v));
                 }
             }
             catch (Exception ex)
@@ -319,6 +345,9 @@ namespace Point2Point.UI
             }
 
             plotModel.Series.Add(jointSerie);
+            plotModelVelocityProfile.Series.Add(velocityProfileSerie);
+
+            PlotModelVelocityProfile = plotModelVelocityProfile;
         }
 
         private static void DrawEffectiveConstraintsHistory(List<VelocityConstraint> historyEntry, PlotModel plotModel)
