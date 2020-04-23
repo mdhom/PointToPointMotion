@@ -33,8 +33,9 @@
             <Button Content="Load" Command="{Binding LoadCommand}" Margin="0,0,10,0" />
             
             <CheckBox Content="Raw" IsChecked="{Binding DrawRawSeries}" />
-            <CheckBox Content="MotionProfile" IsChecked="{Binding DrawMotionProfile}" />
-            <CheckBox Content="VelocityPoints" IsChecked="{Binding DrawVelocityPoints}" Margin="0,0,20,0" />
+            <CheckBox Content="ModifiedConstraints" IsChecked="{Binding DrawModifiedConstraints}" />
+            <CheckBox Content="VelocityPoints" IsChecked="{Binding DrawVelocityPoints}" />
+            <CheckBox Content="MotionProfile" IsChecked="{Binding DrawMotionProfile}" Margin="0,0,20,0" />
 
             <Button Content="Previous History" Command="{Binding NavigateHistoryCommand}">
                 <Button.CommandParameter>

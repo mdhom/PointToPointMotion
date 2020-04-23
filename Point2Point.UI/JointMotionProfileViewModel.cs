@@ -57,6 +57,13 @@ namespace Point2Point.UI
             set => ChangeProperty(value, ref _drawVelocityPoints, () => Update(_randomConstraints));
         }
 
+        private bool _drawModifiedConstraints;
+        public bool DrawModifiedConstraints
+        {
+            get => _drawModifiedConstraints;
+            set => ChangeProperty(value, ref _drawModifiedConstraints, () => Update(_randomConstraints));
+        }
+
         private int _historyNavigationIndex = -1;
         public int HistoryNavigationIndex
         {
@@ -222,6 +229,11 @@ namespace Point2Point.UI
                     DrawVelocityPointsProfile(profile, plotModel);
                 }
 
+                if (DrawModifiedConstraints)
+                {
+                    DrawModifiedConstraintsProfile(profile, plotModel);
+                }
+
                 if (profile.TotalDuration != 0 && DrawMotionProfile)
                 {
                     DrawJointMotionProfile(profile, plotModel);
@@ -285,11 +297,13 @@ namespace Point2Point.UI
             }
 
             plotModel.Series.Add(jointSerie);
+        }
 
-
+        private static void DrawModifiedConstraintsProfile(JointMotionProfile jointMotionProfile, PlotModel plotModel)
+        {
             var effSerie = new LineSeries()
             {
-                Title = "JointProfile Edited",
+                Title = "JointProfile Modified",
                 Color = OxyColors.Purple,
                 ItemsSource = new List<DataPoint>()
             };
