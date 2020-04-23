@@ -128,7 +128,30 @@ namespace Point2Point.JointMotion
                 var startDistance = profilePoints.Max(v => v.Distance);
 
                 var situation = GetSituation(v0, constraint, nextConstraint);
-                if (situation == 7)
+                
+                if (situation == 3)
+                {
+                    var distanceForAcc = RampCalculator.CalculateDistanceNeeded(v0, v1, Parameters);
+                    if (distanceForAcc < availableDistance)
+                    {
+                        profilePoints.Add(new VelocityPoint(startDistance + distanceForAcc, v1, constraint));
+                        profilePoints.Add(new VelocityPoint(startDistance + availableDistance, v1, constraint));
+                    }
+                    else
+                    {
+                        MergeWithPreviousConstraint(constraint, profilePoints, i);
+                        return false;
+                    }
+                }
+                else if(situation == 4)
+                {
+                    // INVALID!
+                }
+                else if (situation == 5)
+                {
+                    // INVALID!
+                }
+                else if (situation == 7)
                 {
                     profilePoints.Add(new VelocityPoint(startDistance + availableDistance, v1, constraint));
                 }
@@ -146,37 +169,19 @@ namespace Point2Point.JointMotion
                         return false;
                     }
                 }
-                else if (situation == 3)
-                {
-                    var distanceForAcc = RampCalculator.CalculateDistanceNeeded(v0, v1, Parameters);
-                    if (distanceForAcc < availableDistance)
-                    {
-                        profilePoints.Add(new VelocityPoint(startDistance + distanceForAcc, v1, constraint));
-                        profilePoints.Add(new VelocityPoint(startDistance + availableDistance, v1, constraint));
-                    }
-                    else
-                    {
-                        MergeWithPreviousConstraint(constraint, profilePoints, i);
-                        return false;
-                    }
-                }
                 else if (!IterativlyFindSteppedDownVelocity(v0, constraint, v2, availableDistance, startDistance, profilePoints))
                 {
                     switch (situation)
                     {
                         case 1:
-                        case 4:
                             MergeWithNextConstraint(constraint, i);
                             break;
-                        case 2:
-                        case 3:
+                        case 4:
                         case 5:
+                            break;
+                        case 2:
                         case 6:
                             MergeWithPreviousConstraint(constraint, profilePoints, i);
-                            break;
-                        case 7:
-                            break;
-                        case 8:
                             break;
                         default:
                             throw new JointMotionCalculationException($"Unknown situation id {situation}");
@@ -335,7 +340,7 @@ namespace Point2Point.JointMotion
             else if (v1 > v0)
             {
                 // situations 1-3
-                if (v2 < v1 && v2 > v0)
+                if (v2 < v1 && v2 >= v0)
                 {
                     return 1;
                 }
@@ -351,7 +356,7 @@ namespace Point2Point.JointMotion
             else
             {
                 // situations 4-6
-                if (v2 > v1 && v2 < v0)
+                if (v2 > v1 && v2 <= v0)
                 {
                     return 4;
                 }
