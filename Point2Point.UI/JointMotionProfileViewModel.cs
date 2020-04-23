@@ -20,6 +20,8 @@ namespace Point2Point.UI
 {
     public class JointMotionProfileViewModel : NotifyPropertyChangedBase
     {
+        private const string _logFolder = "log";
+
         private PlotModel _plotModel;
         public PlotModel PlotModel
         {
@@ -41,14 +43,14 @@ namespace Point2Point.UI
             set => ChangeProperty(value, ref _drawRawSeries, () => Update(_randomConstraints));
         }
 
-        private bool _drawMotionProfile;
+        private bool _drawMotionProfile = true;
         public bool DrawMotionProfile
         {
             get => _drawMotionProfile;
             set => ChangeProperty(value, ref _drawMotionProfile, () => Update(_randomConstraints));
         }
 
-        private bool _drawVelocityPoints = true;
+        private bool _drawVelocityPoints;
         public bool DrawVelocityPoints
         {
             get => _drawVelocityPoints;
@@ -62,6 +64,13 @@ namespace Point2Point.UI
             set => ChangeProperty(value, ref _historyNavigationIndex);
         }
 
+        private int _numRecalculations;
+        public int NumRecalculations
+        {
+            get => _numRecalculations;
+            set => ChangeProperty(value, ref _numRecalculations);
+        }
+
         public bool RandomTestRunning { get; private set; }
 
         public ICommand RandomCommand { get; }
@@ -72,60 +81,30 @@ namespace Point2Point.UI
         public ICommand NavigateHistoryCommand { get; }
         public ICommand StepCommand { get; }
 
-        private ConstraintsCollection _randomConstraints;
         private readonly SemaphoreSlim _stepSemaphore = new SemaphoreSlim(0, 1);
+        private ConstraintsCollection _randomConstraints;
         private Task _randomTestTask;
         private CancellationTokenSource _randomTestCancellationTokenSource = new CancellationTokenSource();
 
         public JointMotionProfileViewModel()
         {
+            Directory.CreateDirectory(_logFolder);
+
             _randomConstraints = new ConstraintsCollection(
                 new VelocityConstraint(0, 1000, 500),
                 new VelocityConstraint(1000, 1000, 400),
                 new VelocityConstraint(500, 1000, 200));
+
             Update(_randomConstraints);
 
             RandomCommand = new RelayCommand(() =>
             {
-                var random = new Random((int)DateTime.Now.Ticks);
-
-                var segments = new List<VelocityConstraint>() { new VelocityConstraint(0, random.NextDouble(200, 1000), random.Next(100, 1000)) };
-                for (var i = 0; i < 15; i++)
-                {
-                    segments.Add(new VelocityConstraint(random.NextDouble(0, 5000), random.NextDouble(200, 1000), random.Next(100, 1000)));
-                }
-                _randomConstraints = new ConstraintsCollection(segments);
-                Update(_randomConstraints);
+                GenerateRandomProfile();
             });
 
             RandomTestCommand = new RelayCommand(() =>
             {
-                if (RandomTestRunning && _randomTestTask != null)
-                {
-                    // STOP
-                    _randomTestCancellationTokenSource.Cancel();
-                }
-                else
-                {
-                    // START
-                    _randomTestCancellationTokenSource = new CancellationTokenSource();
-                    _randomTestTask = Task.Run(async () =>
-                    {
-                        RandomTestRunning = true;
-                        try
-                        {
-                            while (!_randomTestCancellationTokenSource.IsCancellationRequested)
-                            {
-                                RandomCommand.Execute(null);
-                                await Task.Delay(500);
-                            }
-                        }
-                        finally
-                        {
-                            RandomTestRunning = false;
-                        }
-                    });
-                }
+                ToggleRandomTestState();
             });
 
             RecalcCommand = new RelayCommand(() =>
@@ -147,16 +126,7 @@ namespace Point2Point.UI
 
             LoadCommand = new RelayCommand(() =>
             {
-                var dialog = new OpenFileDialog()
-                {
-                    Filter = "JSON File|*.json"
-                };
-                if (dialog.ShowDialog().GetValueOrDefault(false))
-                {
-                    var jsonContent = File.ReadAllText(dialog.FileName);
-                    _randomConstraints = JsonConvert.DeserializeObject<ConstraintsCollection>(jsonContent);
-                    Update(_randomConstraints);
-                }
+                LoadConstraintsCollection();
             });
 
             NavigateHistoryCommand = new RelayCommand<int>((d) =>
@@ -173,12 +143,30 @@ namespace Point2Point.UI
             });
         }
 
+        #region Load / Save
+
+        private void LoadConstraintsCollection()
+        {
+            var dialog = new OpenFileDialog()
+            {
+                Filter = "JSON File|*.json"
+            };
+            if (dialog.ShowDialog().GetValueOrDefault(false))
+            {
+                var jsonContent = File.ReadAllText(dialog.FileName);
+                _randomConstraints = JsonConvert.DeserializeObject<ConstraintsCollection>(jsonContent);
+                Update(_randomConstraints);
+            }
+        }
+
         private string SaveConstraintsCollection(ConstraintsCollection constraintsCollection)
         {
-            var filename = $"{DateTime.Now:yyyy-MM-dd-HH-mm-ss}.json";
+            var filename = Path.Combine(_logFolder, $"{DateTime.Now:yyyy-MM-dd-HH-mm-ss}.json");
             File.WriteAllText(filename, JsonConvert.SerializeObject(constraintsCollection));
             return filename;
         }
+
+        #endregion
 
         private void Update(ConstraintsCollection constraintsCollection)
         {
@@ -211,6 +199,8 @@ namespace Point2Point.UI
 
                 var profile = new JointMotionProfile(parameters, constraintsCollection);
 
+                NumRecalculations = profile.NumRecalculations;
+
                 if (profile.VelocityProfilePoints != null && DrawVelocityPoints)
                 {
                     DrawVelocityPointsProfile(profile, plotModel);
@@ -242,6 +232,8 @@ namespace Point2Point.UI
 
             PlotModel = plotModel;
         }
+
+        #region Draw methods 
 
         private static void DrawRawConstraints(ConstraintsCollection constraintsCollection, PlotModel plotModel)
         {
@@ -387,5 +379,54 @@ namespace Point2Point.UI
 
             plotModel.Series.Add(effectiveSerie);
         }
+
+        #endregion
+
+        #region Random + RandomTest
+
+        private void GenerateRandomProfile()
+        {
+            var random = new Random((int)DateTime.Now.Ticks);
+
+            var segments = new List<VelocityConstraint>() { new VelocityConstraint(0, random.NextDouble(200, 1000), random.Next(100, 1000)) };
+            for (var i = 0; i < 15; i++)
+            {
+                segments.Add(new VelocityConstraint(random.NextDouble(0, 5000), random.NextDouble(200, 1000), random.Next(100, 1000)));
+            }
+            _randomConstraints = new ConstraintsCollection(segments);
+            Update(_randomConstraints);
+        }
+
+        private void ToggleRandomTestState()
+        {
+            if (RandomTestRunning && _randomTestTask != null)
+            {
+                // STOP
+                _randomTestCancellationTokenSource.Cancel();
+            }
+            else
+            {
+                // START
+                _randomTestCancellationTokenSource = new CancellationTokenSource();
+                _randomTestTask = Task.Run(async () =>
+                {
+                    RandomTestRunning = true;
+                    try
+                    {
+                        while (!_randomTestCancellationTokenSource.IsCancellationRequested)
+                        {
+                            GenerateRandomProfile();
+                            await Task.Delay(500);
+                        }
+                    }
+                    finally
+                    {
+                        RandomTestRunning = false;
+                    }
+                });
+            }
+        }
+
+        #endregion
     }
 }

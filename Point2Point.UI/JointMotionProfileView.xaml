@@ -36,11 +36,13 @@
                 </Button.CommandParameter>
             </Button>
             <TextBlock Text="{Binding HistoryNavigationIndex}" Margin="5,0,5,0" />
-            <Button Content="Next History" Command="{Binding NavigateHistoryCommand}">
+            <Button Content="Next History" Command="{Binding NavigateHistoryCommand}" Margin="0,0,20,0">
                 <Button.CommandParameter>
                     <sys:Int32>1</sys:Int32>
                 </Button.CommandParameter>
             </Button>
+
+            <TextBlock Text="{Binding NumRecalculations, StringFormat='NumRecalculations: {0}'}" />
         </StackPanel>
 
         <oxy:PlotView Grid.Row="1" Model="{Binding PlotModel}">
