@@ -71,15 +71,31 @@ namespace Point2Point.UI
             set => ChangeProperty(value, ref _numRecalculations);
         }
 
-        public bool RandomTestRunning { get; private set; }
+        private bool _randomTestRunning;
+        public bool RandomTestRunning
+        {
+            get => _randomTestRunning;
+            set => ChangeProperty(value, ref _randomTestRunning, () =>
+            {
+                App.Current.Dispatcher.Invoke(() =>
+                {
+                    RandomCommand.RaiseCanExecuteChanged();
+                    RecalcCommand.RaiseCanExecuteChanged();
+                    SaveCommand.RaiseCanExecuteChanged();
+                    LoadCommand.RaiseCanExecuteChanged();
+                    NavigateHistoryCommand.RaiseCanExecuteChanged();
+                    StepCommand.RaiseCanExecuteChanged();
+                });
+            });
+        }
 
-        public ICommand RandomCommand { get; }
-        public ICommand RandomTestCommand { get; }
-        public ICommand RecalcCommand { get; }
-        public ICommand SaveCommand { get; }
-        public ICommand LoadCommand { get; }
-        public ICommand NavigateHistoryCommand { get; }
-        public ICommand StepCommand { get; }
+        public RelayCommand RandomCommand { get; }
+        public RelayCommand RandomTestCommand { get; }
+        public RelayCommand RecalcCommand { get; }
+        public RelayCommand SaveCommand { get; }
+        public RelayCommand LoadCommand { get; }
+        public RelayCommand<int> NavigateHistoryCommand { get; }
+        public RelayCommand StepCommand { get; }
 
         private readonly SemaphoreSlim _stepSemaphore = new SemaphoreSlim(0, 1);
         private ConstraintsCollection _randomConstraints;
@@ -100,7 +116,7 @@ namespace Point2Point.UI
             RandomCommand = new RelayCommand(() =>
             {
                 GenerateRandomProfile();
-            });
+            }, o => !RandomTestRunning);
 
             RandomTestCommand = new RelayCommand(() =>
             {
@@ -114,7 +130,7 @@ namespace Point2Point.UI
                     HistoryNavigationIndex = -1;
                     Update(_randomConstraints);
                 }
-            });
+            }, o => !RandomTestRunning);
 
             SaveCommand = new RelayCommand(() =>
             {
@@ -122,12 +138,12 @@ namespace Point2Point.UI
                 {
                     SaveConstraintsCollection(_randomConstraints);
                 }
-            });
+            }, o => !RandomTestRunning);
 
             LoadCommand = new RelayCommand(() =>
             {
                 LoadConstraintsCollection();
-            });
+            }, o => !RandomTestRunning);
 
             NavigateHistoryCommand = new RelayCommand<int>((d) =>
             {
@@ -140,7 +156,7 @@ namespace Point2Point.UI
                 _stepSemaphore.Release();
                 HistoryNavigationIndex++;
                 Update(_randomConstraints);
-            });
+            }, o => !RandomTestRunning);
         }
 
         #region Load / Save
@@ -227,7 +243,7 @@ namespace Point2Point.UI
                     ex = ex.InnerException;
                     sb.Append($"{ex.GetType()} - {ex.Message} \r\n{ex.StackTrace}");
                 }
-                File.WriteAllText(exceptionFilename, sb.ToString());
+                File.WriteAllText(Path.Combine(_logFolder, exceptionFilename), sb.ToString());
             }
 
             PlotModel = plotModel;
@@ -416,7 +432,7 @@ namespace Point2Point.UI
                         while (!_randomTestCancellationTokenSource.IsCancellationRequested)
                         {
                             GenerateRandomProfile();
-                            await Task.Delay(500);
+                            await Task.Delay(100);
                         }
                     }
                     finally

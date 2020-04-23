@@ -176,9 +176,6 @@ namespace Point2Point.JointMotion
                         case 1:
                             MergeWithNextConstraint(constraint, i);
                             break;
-                        case 4:
-                        case 5:
-                            break;
                         case 2:
                         case 6:
                             MergeWithPreviousConstraint(constraint, profilePoints, i);
