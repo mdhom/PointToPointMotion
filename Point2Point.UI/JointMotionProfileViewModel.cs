@@ -96,6 +96,13 @@ namespace Point2Point.UI
             });
         }
 
+        private int _numRandomTestRuns;
+        public int NumRandomTestRuns
+        {
+            get => _numRandomTestRuns;
+            set => ChangeProperty(value, ref _numRandomTestRuns);
+        }
+
         public RelayCommand RandomCommand { get; }
         public RelayCommand RandomTestCommand { get; }
         public RelayCommand RecalcCommand { get; }
@@ -446,7 +453,8 @@ namespace Point2Point.UI
                         while (!_randomTestCancellationTokenSource.IsCancellationRequested)
                         {
                             GenerateRandomProfile();
-                            await Task.Delay(100);
+                            NumRandomTestRuns++;
+                            await Task.Delay(20);
                         }
                     }
                     finally
