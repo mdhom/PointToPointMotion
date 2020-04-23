@@ -423,13 +423,14 @@ namespace Point2Point.JointMotion
         {
             var targetAccVelocity = constraint.MaximumVelocity;
             var stepDownSize = 5.0;
+            var limitVelocity = Math.Max(lastVelocity, targetVelocity);
             while (true)
             {
-                if (targetAccVelocity <= lastVelocity)
+                if (targetAccVelocity <= limitVelocity)
                 {
                     // try with lastVelocity last time because we may have overstepped
                     // that critial point
-                    return TryAddVelocityPoints(lastVelocity);
+                    return TryAddVelocityPoints(limitVelocity);
                 }
                 else if (TryAddVelocityPoints(targetAccVelocity))
                 {
