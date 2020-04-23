@@ -78,6 +78,9 @@ namespace Point2Point.JointMotion
             return effectiveConstraints;
         }
 
+        public bool IsOutOfBounds(double distance, double velocity)
+            => this.Any(c => c.Contains(distance) && velocity > c.MaximumVelocity);
+
         private struct ConstraintPoint
         {
             public double Distance { get; set; }

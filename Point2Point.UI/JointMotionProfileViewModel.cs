@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -54,6 +55,8 @@ namespace Point2Point.UI
             set => ChangeProperty(value, ref _historyNavigationIndex);
         }
 
+        public bool RandomTestRunning { get; private set; }
+
         public ICommand RandomCommand { get; }
         public ICommand RandomTestCommand { get; }
         public ICommand RecalcCommand { get; }
@@ -63,7 +66,9 @@ namespace Point2Point.UI
         public ICommand StepCommand { get; }
 
         private ConstraintsCollection _randomConstraints;
-        private SemaphoreSlim _stepSemaphore = new SemaphoreSlim(0, 1);
+        private readonly SemaphoreSlim _stepSemaphore = new SemaphoreSlim(0, 1);
+        private Task _randomTestTask;
+        private CancellationTokenSource _randomTestCancellationTokenSource = new CancellationTokenSource();
 
         public JointMotionProfileViewModel()
         {
@@ -88,14 +93,32 @@ namespace Point2Point.UI
 
             RandomTestCommand = new RelayCommand(() =>
             {
-                Task.Run(async () =>
+                if (RandomTestRunning && _randomTestTask != null)
                 {
-                    while (true)
+                    // STOP
+                    _randomTestCancellationTokenSource.Cancel();
+                }
+                else
+                {
+                    // START
+                    _randomTestCancellationTokenSource = new CancellationTokenSource();
+                    _randomTestTask = Task.Run(async () =>
                     {
-                        RandomCommand.Execute(null);
-                        await Task.Delay(500);
-                    }
-                });
+                        RandomTestRunning = true;
+                        try
+                        {
+                            while (!_randomTestCancellationTokenSource.IsCancellationRequested)
+                            {
+                                RandomCommand.Execute(null);
+                                await Task.Delay(500);
+                            }
+                        }
+                        finally
+                        {
+                            RandomTestRunning = false;
+                        }
+                    });
+                }
             });
 
             RecalcCommand = new RelayCommand(() =>
@@ -117,7 +140,10 @@ namespace Point2Point.UI
 
             LoadCommand = new RelayCommand(() =>
             {
-                var dialog = new OpenFileDialog();
+                var dialog = new OpenFileDialog()
+                {
+                    Filter = "JSON File|*.json"
+                };
                 if (dialog.ShowDialog().GetValueOrDefault(false))
                 {
                     var jsonContent = File.ReadAllText(dialog.FileName);
@@ -142,7 +168,7 @@ namespace Point2Point.UI
 
         private string SaveConstraintsCollection(ConstraintsCollection constraintsCollection)
         {
-            var filename = $"{DateTime.Now:yyyy-MM-dd-hh-mm-ss}.json";
+            var filename = $"{DateTime.Now:yyyy-MM-dd-HH-mm-ss}.json";
             File.WriteAllText(filename, JsonConvert.SerializeObject(constraintsCollection));
             return filename;
         }
@@ -262,37 +288,37 @@ namespace Point2Point.UI
             plotModel.Series.Add(effSerie);
         }
 
-        private static void DrawJointMotionProfile(JointMotionProfile jointMotionProfile, PlotModel plotModel)
+        private void DrawJointMotionProfile(JointMotionProfile jointMotionProfile, PlotModel plotModel)
         {
+            var jointSerie = new LineSeries()
+            {
+                Title = "Profile",
+                Color = OxyColors.Gray,
+                ItemsSource = new List<DataPoint>()
+            };
+
             try
             {
-                var jointSerie = new LineSeries()
-                {
-                    Title = "Profile",
-                    Color = OxyColors.Gray,
-                    ItemsSource = new List<DataPoint>()
-                };
-
                 for (double t = 0; t < jointMotionProfile.TotalDuration; t += 0.01)
                 {
-                    try
+                    jointMotionProfile.GetStatus(t, out var v, out var s);
+                    if (jointMotionProfile.EffectiveConstraintsHistory.First().IsOutOfBounds(s, v))
                     {
-                        jointMotionProfile.GetStatus(t, out var v, out var s);
-                        (jointSerie.ItemsSource as List<DataPoint>).Add(new DataPoint(s, v));
+                        throw new JointMotionCalculationException($"Out of bounds at {s}mm with {v}mm/s");
                     }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"{ex.Message}\r\n{ex.StackTrace}");
-                        break;
-                    }
-                }
 
-                plotModel.Series.Add(jointSerie);
+                    (jointSerie.ItemsSource as List<DataPoint>).Add(new DataPoint(s, v));
+                }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"{ex.Message}\r\n{ex.StackTrace}");
+                if (RandomTestRunning)
+                {
+                    throw;
+                }
             }
+
+            plotModel.Series.Add(jointSerie);
         }
 
         private static void DrawEffectiveConstraintsHistory(List<VelocityConstraint> historyEntry, PlotModel plotModel)
