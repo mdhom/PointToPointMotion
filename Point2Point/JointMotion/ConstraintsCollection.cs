@@ -36,7 +36,7 @@ namespace Point2Point.JointMotion
             Add(segment);
         }
 
-        public List<VelocityConstraint> GetEffectiveConstraints()
+        public ConstraintsCollection GetEffectiveConstraints()
         {
             var distanceValues = this
                 .SelectMany(s => new[] { s.Start, s.End })
@@ -55,7 +55,7 @@ namespace Point2Point.JointMotion
                 }
             }
 
-            var effectiveConstraints = new List<VelocityConstraint>();
+            var effectiveConstraints = new ConstraintsCollection();
             for (var i = 0; i < minPoints.Count; i++)
             {
                 var from = minPoints[i];
