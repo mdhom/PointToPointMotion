@@ -16,6 +16,7 @@ namespace Point2Point.JointMotion
         public List<RampCalculationResult> RampResults { get; private set; }
         public List<double> TimesAtVelocityPoints { get; private set; }
         public double TotalDuration { get; private set; }
+        public int NumRecalculations { get; }
 
 #if DEBUG
         public List<ConstraintsCollection> EffectiveConstraintsHistory { get; private set; }
@@ -29,12 +30,22 @@ namespace Point2Point.JointMotion
 
 #if DEBUG
             EffectiveConstraintsHistory = new List<ConstraintsCollection>();
+            EffectiveConstraintsHistory.Add(new ConstraintsCollection(EffectiveConstraints.Select(ec => ec.Copy())));
+
+            CloseHighTightGapsIteratively();
+
             while (true)
             {
                 EffectiveConstraintsHistory.Add(new ConstraintsCollection(EffectiveConstraints.Select(ec => ec.Copy())));
+
                 if (CalculateProfile())
                 {
                     return;
+                }
+                else
+                {
+                    // possibility to set brakepoint here
+                    NumRecalculations++;
                 }
             }
 #else
@@ -216,6 +227,94 @@ namespace Point2Point.JointMotion
             return true;
         }
 
+        private void CloseHighTightGapsIteratively()
+        {
+            while (CloseHighTightGaps())
+            {
+            }
+        }
+
+        private bool CloseHighTightGaps()
+        {
+            var highTightGaps = new List<Gap>();
+            for (int i = 0; i < EffectiveConstraints.Count; i++)
+            {
+                var constraint = EffectiveConstraints[i];
+                var v0 = i > 0 ? EffectiveConstraints[i - 1].MaximumVelocity : 0;
+                var v1 = constraint.MaximumVelocity;
+                var v2 = i < EffectiveConstraints.Count - 1 ? EffectiveConstraints[i + 1].MaximumVelocity : 0;
+
+                if (v1 > v0 && v1 > v2)
+                {
+                    var distanceAcc = RampCalculator.CalculateDistanceNeeded(v0, v1, Parameters);
+                    var distanceDec = RampCalculator.CalculateDistanceNeeded(v1, v2, Parameters);
+                    if (distanceAcc + distanceDec > constraint.Length)
+                    {
+                        var distanceAccToV2 = RampCalculator.CalculateDistanceNeeded(v0, v2, Parameters);
+                        if (distanceAccToV2 < constraint.Length)
+                        {
+                            highTightGaps.Add(new Gap(constraint, v0, v1, v2, Gap.ActionType.DoNothing));
+                        }
+                        else
+                        {
+                            if (v0 > v2)
+                            {
+                                highTightGaps.Add(new Gap(constraint, v0, v1, v2, Gap.ActionType.MergeWithPrevious));
+                            }
+                            else
+                            {
+                                highTightGaps.Add(new Gap(constraint, v0, v1, v2, Gap.ActionType.MergeWithNext));
+                            }
+                        }
+                    }
+                }
+            }
+
+            var gapsOrdered = highTightGaps.OrderByDescending(g => g.Constraint.MaximumVelocity);
+            foreach (var gap in gapsOrdered)
+            {
+                switch (gap.Action)
+                {
+                    case Gap.ActionType.MergeWithPrevious:
+                        MergeWithPreviousConstraint(gap.Constraint, null, EffectiveConstraints.IndexOf(gap.Constraint), true);
+                        break;
+                    case Gap.ActionType.MergeWithNext:
+                        MergeWithNextConstraint(gap.Constraint, EffectiveConstraints.IndexOf(gap.Constraint));
+                        break;
+                    case Gap.ActionType.DoNothing:
+                    default:
+                        break;
+                }
+            }
+
+            return highTightGaps.Any(g => g.Action != Gap.ActionType.DoNothing);
+        }
+
+        class Gap
+        {
+            public enum ActionType
+            {
+                MergeWithPrevious,
+                MergeWithNext,
+                DoNothing,
+            }
+
+            public VelocityConstraint Constraint { get; set; }
+            public double v0 { get; set; }
+            public double v1 { get; set; }
+            public double v2 { get; set; }
+            public ActionType Action { get; set; }
+
+            public Gap(VelocityConstraint constraint, double v0, double v1, double v2, ActionType action)
+            {
+                Constraint = constraint;
+                this.v0 = v0;
+                this.v1 = v1;
+                this.v2 = v2;
+                this.Action = action;
+            }
+        }
+
         private int GetSituation(double v0, VelocityConstraint constraint, VelocityConstraint nextConstraint)
         {
             var v1 = constraint.MaximumVelocity;
@@ -281,7 +380,7 @@ namespace Point2Point.JointMotion
         /// Removes the given constraint and adds its length to the previous constraint 
         /// => the previous constraint is longer now. Enables earlier braking.
         /// </summary>
-        private void MergeWithPreviousConstraint(VelocityConstraint constraint, List<VelocityPoint> velocityPoints, int index)
+        private void MergeWithPreviousConstraint(VelocityConstraint constraint, List<VelocityPoint> velocityPoints, int index, bool forceMerge = false)
         {
             const double reduceByDistance = 100;
             const double reduceByVelocity = 50;
@@ -293,13 +392,13 @@ namespace Point2Point.JointMotion
             else
             {
                 var previousConstraint = EffectiveConstraints[index - 1];
-                if (previousConstraint.MaximumVelocity > constraint.MaximumVelocity && previousConstraint.Length > reduceByDistance)
+                if (!forceMerge && previousConstraint.MaximumVelocity > constraint.MaximumVelocity && previousConstraint.Length > reduceByDistance)
                 {
                     constraint.Start -= reduceByDistance;
                     constraint.Length += reduceByDistance;
                     previousConstraint.Length -= reduceByDistance;
                 }
-                else if (previousConstraint.MaximumVelocity < constraint.MaximumVelocity && Math.Abs(previousConstraint.MaximumVelocity - constraint.MaximumVelocity) > reduceByVelocity)
+                else if (!forceMerge && previousConstraint.MaximumVelocity < constraint.MaximumVelocity && Math.Abs(previousConstraint.MaximumVelocity - constraint.MaximumVelocity) > reduceByVelocity)
                 {
                     constraint.MaximumVelocity -= reduceByVelocity;
                 }
@@ -309,8 +408,11 @@ namespace Point2Point.JointMotion
                     previousConstraint.Length += constraint.Length;
                     previousConstraint.MaximumVelocity = Math.Min(constraint.MaximumVelocity, previousConstraint.MaximumVelocity);
 
-                    var correspondingConstraint = velocityPoints.Last().CorrespondingConstraint;
-                    velocityPoints.RemoveAll(vp => vp.CorrespondingConstraint == correspondingConstraint);
+                    if (velocityPoints != null)
+                    {
+                        var correspondingConstraint = velocityPoints.Last().CorrespondingConstraint;
+                        velocityPoints.RemoveAll(vp => vp.CorrespondingConstraint == correspondingConstraint);
+                    }
                 }
             }
         }
