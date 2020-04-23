@@ -9,11 +9,11 @@
         Title="Point 2 Point Calculator" WindowState="Maximized">
     <Grid Margin="10">
         <TabControl>
-            <TabItem Header="P2PCalculator" Padding="10">
-                <local:P2PCalculatorView DataContext="{Binding P2PCalculator}" />
-            </TabItem>
             <TabItem Header="JointMotionProfile" Padding="10">
                 <local:JointMotionProfileView DataContext="{Binding JointMotion}" />
+            </TabItem>
+            <TabItem Header="P2PCalculator" Padding="10">
+                <local:P2PCalculatorView DataContext="{Binding P2PCalculator}" />
             </TabItem>
         </TabControl>
     </Grid>
