@@ -9,22 +9,6 @@ namespace Point2Point.Tests
         private const double _delta = 0.00001;
 
         [TestMethod]
-        public void AppendWorks()
-        {
-            // Arrange
-            var constraints = new ConstraintsCollection(
-                new VelocityConstraint(0, 1000, 500));
-
-            // Act
-            // Wrong start here on purpose! Must be overwritten by Append
-            constraints.Append(new VelocityConstraint(double.MaxValue, 1000, 200)); 
-
-            // Assert
-            Assert.AreEqual(2, constraints.Count);
-            Assert.AreEqual(1000, constraints[1].Start);
-        }
-
-        [TestMethod]
         public void GetEffectiveSegmentsWorks()
         {
             // Arrange

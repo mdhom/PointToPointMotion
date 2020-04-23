@@ -356,7 +356,7 @@ namespace Point2Point.UI
                 for (double t = 0; t < jointMotionProfile.TotalDuration; t += 0.01)
                 {
                     jointMotionProfile.GetStatus(t, out var v, out var s);
-                    if (jointMotionProfile.EffectiveConstraintsHistory.First().IsOutOfBounds(s, v))
+                    if (jointMotionProfile.EffectiveConstraintsHistory.First().ExeedsAnyConstraint(s, v))
                     {
                         throw new JointMotionCalculationException($"Out of bounds at {s}mm with {v}mm/s");
                     }

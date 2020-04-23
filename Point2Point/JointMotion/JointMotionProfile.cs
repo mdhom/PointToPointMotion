@@ -143,13 +143,9 @@ namespace Point2Point.JointMotion
                         return false;
                     }
                 }
-                else if(situation == 4)
+                else if(situation == 4 || situation == 5)
                 {
-                    // INVALID!
-                }
-                else if (situation == 5)
-                {
-                    // INVALID!
+                    throw new JointMotionCalculationException($"Situation {situation} must not appear! Something went wrong before");
                 }
                 else if (situation == 7)
                 {
@@ -181,7 +177,7 @@ namespace Point2Point.JointMotion
                             MergeWithPreviousConstraint(constraint, profilePoints, i);
                             break;
                         default:
-                            throw new JointMotionCalculationException($"Unknown situation id {situation}");
+                            throw new JointMotionCalculationException($"Unhandled situation id {situation}");
                     }
                     return false;
                 }
@@ -229,13 +225,28 @@ namespace Point2Point.JointMotion
             return true;
         }
 
+        #region GapClosing
+
+        /// <summary>
+        /// Iteratively calls the <see cref="CloseHighTightGaps"/> method until it succeeds.
+        /// See <see cref="CloseHighTightGaps"/> for further explanation
+        /// </summary>
         private void CloseHighTightGapsIteratively()
         {
             while (CloseHighTightGaps())
             {
+                // repeat as long as CloseHightTightGaps returns false
             }
         }
 
+        /// <summary>
+        /// Removes / closes constraint where the velocity profile will never be
+        /// able to enter above the minimnum of velocities (v0, v1 and v2). Can be closed
+        /// upfront to save iterations in the more complex CalculateProfile method. 
+        /// Attention: for closing all gaps, you need to call the method iteratively, because
+        /// new gaps can emerge when existing gaps are closed! Use <see cref="CloseHighTightGapsIteratively" /> method therefore.
+        /// </summary>
+        /// <returns>True if all gaps were closed, otherwise false.</returns>
         private bool CloseHighTightGaps()
         {
             var highTightGaps = new List<Gap>();
@@ -301,11 +312,11 @@ namespace Point2Point.JointMotion
                 DoNothing,
             }
 
-            public VelocityConstraint Constraint { get; set; }
-            public double v0 { get; set; }
-            public double v1 { get; set; }
-            public double v2 { get; set; }
-            public ActionType Action { get; set; }
+            public VelocityConstraint Constraint { get; }
+            public double v0 { get; }
+            public double v1 { get; }
+            public double v2 { get; }
+            public ActionType Action { get; }
 
             public Gap(VelocityConstraint constraint, double v0, double v1, double v2, ActionType action)
             {
@@ -317,6 +328,16 @@ namespace Point2Point.JointMotion
             }
         }
 
+        #endregion
+
+        /// <summary>
+        /// Determines the specific situation, in which the given constraint is located. The situation
+        /// is determined by the previous velocity, the constraint velocity and the suceeding velocity (v0, v1, v2).
+        /// </summary>
+        /// <param name="v0"></param>
+        /// <param name="constraint"></param>
+        /// <param name="nextConstraint"></param>
+        /// <returns></returns>
         private int GetSituation(double v0, VelocityConstraint constraint, VelocityConstraint nextConstraint)
         {
             var v1 = constraint.MaximumVelocity;
@@ -337,13 +358,16 @@ namespace Point2Point.JointMotion
             else if (v1 > v0)
             {
                 // situations 1-3
-                if (v2 < v1 && v2 >= v0)
+                if (v2 < v1)
                 {
-                    return 1;
-                }
-                else if (v2 < v1 && v2 < v0)
-                {
-                    return 2;
+                    if (v2 >= v0)
+                    {
+                        return 1;
+                    }
+                    else
+                    {
+                        return 2;
+                    }
                 }
                 else
                 {
@@ -353,16 +377,20 @@ namespace Point2Point.JointMotion
             else
             {
                 // situations 4-6
-                if (v2 > v1 && v2 <= v0)
+                if (v2 > v1)
                 {
-                    return 4;
-                }
-                else if (v2 > v1 && v2 > v0)
-                {
-                    return 5;
+                    if (v2 <= v0)
+                    {
+                        return 4;
+                    }
+                    else
+                    {
+                        return 5;
+                    }
                 }
                 else
                 {
+                    // v2 < v1
                     return 6;
                 }
             }

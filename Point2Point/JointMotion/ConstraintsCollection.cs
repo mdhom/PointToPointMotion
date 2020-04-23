@@ -19,23 +19,6 @@ namespace Point2Point.JointMotion
         {
         }
 
-        public void Append(VelocityConstraint segment, params VelocityConstraint[] segments)
-            => Append(new List<VelocityConstraint>() { segment }.Concat(segments));
-
-        public void Append(IEnumerable<VelocityConstraint> segments)
-        {
-            foreach (var segment in segments)
-            {
-                segment.Start = this.Any() ? this.Max(s => s.End) : 0;
-                Add(segment);
-            }
-        }
-
-        public void Insert(VelocityConstraint segment)
-        {
-            Add(segment);
-        }
-
         public ConstraintsCollection GetEffectiveConstraints()
         {
             var distanceValues = this
@@ -78,7 +61,7 @@ namespace Point2Point.JointMotion
             return effectiveConstraints;
         }
 
-        public bool IsOutOfBounds(double distance, double velocity)
+        public bool ExeedsAnyConstraint(double distance, double velocity)
             => this.Any(c => c.Contains(distance) && velocity > c.MaximumVelocity);
 
         private struct ConstraintPoint
