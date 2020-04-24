@@ -2,6 +2,10 @@
 
 namespace Point2Point
 {
+    /// <summary>
+    /// Implementation of the paper "Third order point-to-point motion-profile" by Mu Haihua
+    /// See Third-order-p2p-motion-profile.pdf
+    /// </summary>
 #pragma warning disable IDE1006 // Naming Styles
 #pragma warning disable IDE0059 // Unnecessary assignments
     public class P2PCalculator
