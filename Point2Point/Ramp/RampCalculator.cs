@@ -1,5 +1,6 @@
 ﻿using System;
 using Point2Point;
+using Point2Point.JointMotion;
 
 namespace Shuttles.Base.Devices.Shuttles.Motion.Ramp
 {
@@ -25,7 +26,7 @@ namespace Shuttles.Base.Devices.Shuttles.Motion.Ramp
             => Calculate(0, initialVelocity, targetVelocity, motionParameter);
 
         public static double CalculateDistanceNeeded(double vFrom, double vTo, RampMotionParameter motionParameter)
-            => Calculate(vFrom, vTo, motionParameter).TotalDistance;
+            => Calculate(vFrom, vTo, motionParameter).Length;
 
         public static double CalculateTimeNeeded(double vFrom, double vTo, RampMotionParameter motionParameter)
             => Calculate(vFrom, vTo, motionParameter).TotalDuration;
@@ -95,6 +96,66 @@ namespace Shuttles.Base.Devices.Shuttles.Motion.Ramp
                 aOut = a2 - jMax * tPhase;
                 vOut = v2 + a2 * tPhase + 0.5 * -jMax * tPhase2;
                 sOut = s2 + v2 * tPhase + 0.5 * a2 * tPhase2 + -jMax / 6 * tPhase3;
+            }
+        }
+
+        public double GetTimeAt(RampCalculationResult ramp, double s)
+        {
+            if (s > ramp.Length)
+            {
+                throw new ArgumentOutOfRangeException(nameof(s), $"s ({s:2}mm) must be smaller than length of ramp ({ramp.Length:2}mm)");
+            }
+
+            var j1 = ramp.Parameters.PositiveJerk;
+            if (s <= ramp.Phase1Length)
+            {
+                // point lies within phase 1
+                // a t³ + c t + d =0
+                var a = 1.0 / 6 * j1;
+                var c = -ramp.vFrom;
+                var d = s;
+
+                //TODO solve cubic equation
+            }
+            else
+            { 
+                var t1 = ramp.Phase1Duration;
+                var a1 = j1 * t1;
+                var v1 = ramp.vFrom + 0.5 * j1 * t1 * t1;
+                var s1 = ramp.vFrom * t1 + 1.0 / 6 * ramp.Parameters.PositiveJerk * t1 * t1 * t1;
+
+                if (s <= ramp.Phase1Length + ramp.Phase2Length)
+                {
+                    // point lies within phase 2
+                    // a t² + b t + c = 0
+                    var a = 0.5 * a1;
+                    var b = v1;
+                    var c = s1;
+                    if (!MathematicTools.SolveEquation(a, b, c, out var t_1, out var t_2))
+                    {
+                        throw new JointMotionCalculationException($"Failed to solve quadratic equation with a={a:N3}, b={b:N3} and c={c:N3}");
+                    }
+
+                    return t_1 < 0 ? t_2 : t_1;
+                }
+                else
+                {
+                    // point lies within phase 3
+                    var t2 = ramp.Phase2Duration;
+                    var a2 = a1;
+                    var v2 = v1 + a1 * t2;
+                    var s2 = s1 + v1 * t2 + 0.5 * a1 * t2 * t2;
+
+                    var j3 = ramp.Parameters.NegativeJerk;
+
+                    // a t³ + b t² + c t + d = 0
+                    var a = -1.0 / 6 * j3;
+                    var b = 0.5 * a2;
+                    var c = v2;
+                    var d = s2;
+
+                    //TODO solve cubic equation
+                }
             }
         }
 
@@ -226,11 +287,14 @@ namespace Shuttles.Base.Devices.Shuttles.Motion.Ramp
 
             var s3 = v2 * t3 + 0.5 * a2 * t3 * t3 + 1.0 / 6.0 * jPos * t3 * t3 * t3;
 
-            result.TotalDistance = s1 + s2 + s3;
+            result.Length = s1 + s2 + s3;
             result.TotalDuration = t1 + t2 + t3;
             result.Phase1Duration = t1;
+            result.Phase1Length = s1;
             result.Phase2Duration = t2;
+            result.Phase2Length = s2;
             result.Phase3Duration = t3;
+            result.Phase3Length = s3;
 
             return result;
         }

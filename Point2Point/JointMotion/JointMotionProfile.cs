@@ -9,12 +9,14 @@ namespace Point2Point.JointMotion
     public class JointMotionProfile
     {
         public RampMotionParameter Parameters { get; }
+        public ConstraintsCollection OriginalConstraints { get; }
         public ConstraintsCollection EffectiveConstraints { get; }
         public int NumRecalculations { get; }
 
         public List<VelocityPoint> VelocityProfilePoints { get; private set; }
-        public List<RampCalculationResult> RampResults { get; private set; }
+        public List<ExtendedRampCalculationResult> RampResults { get; private set; }
         public List<double> TimesAtVelocityPoints { get; private set; }
+        public List<DistanceTimestamp> Timestamps { get; }
         public double TotalDuration { get; private set; }
 
 #if DEBUG
@@ -26,6 +28,7 @@ namespace Point2Point.JointMotion
         public JointMotionProfile(RampMotionParameter parameters, ConstraintsCollection constraints)
         {
             Parameters = parameters;
+            OriginalConstraints = new ConstraintsCollection(constraints.Select(c => c.Copy()));
 
             EffectiveConstraints = constraints.GetEffectiveConstraints();
 
@@ -43,7 +46,7 @@ namespace Point2Point.JointMotion
 
                 if (CalculateProfile())
                 {
-                    return;
+                    break;
                 }
                 else
                 {
@@ -56,6 +59,8 @@ namespace Point2Point.JointMotion
             {
             }
 #endif
+
+            Timestamps = CalculateTimestampsAtConstraintOriginalDistances();
         }
 
         public JointMotionProfile(RampMotionParameter parameters, IEnumerable<VelocityConstraint> constraints)
@@ -220,7 +225,7 @@ namespace Point2Point.JointMotion
             velocityPoints = velocityPoints.DistinctBy(pp => new { pp.Distance, pp.Velocity }).ToList();
 
             // calculate ramp results and times
-            var rampResults = new List<RampCalculationResult>();
+            var rampResults = new List<ExtendedRampCalculationResult>();
             var times = new List<double>();
             var timeSum = 0.0;
             for (var i = 0; i < velocityPoints.Count - 1; i++)
@@ -228,10 +233,10 @@ namespace Point2Point.JointMotion
                 var pFrom = velocityPoints[i];
                 var pTo = velocityPoints[i + 1];
 
-                var ramp = RampCalculator.Calculate(pFrom.Velocity, pTo.Velocity, Parameters);
+                var ramp = new ExtendedRampCalculationResult(RampCalculator.Calculate(pFrom.Velocity, pTo.Velocity, Parameters), pFrom.Distance);
                 rampResults.Add(ramp);
 
-                if (ramp.Direction != RampDirection.Constant && Math.Abs(ramp.TotalDistance - (pTo.Distance - pFrom.Distance)) > 1e-8)
+                if (ramp.Direction != RampDirection.Constant && Math.Abs(ramp.Length - (pTo.Distance - pFrom.Distance)) > 1e-8)
                 {
                     throw new JointMotionCalculationException($"Calculated distance differs from velocityPoints distance");
                 }
@@ -256,6 +261,33 @@ namespace Point2Point.JointMotion
             }
 
             return true;
+        }
+
+        private List<DistanceTimestamp> CalculateTimestampsAtConstraintOriginalDistances()
+            => CalculateTimestamps(OriginalConstraints.SelectMany(c => new[] { c.Start, c.End }));
+
+        public List<DistanceTimestamp> CalculateTimestamps(IEnumerable<double> distances)
+        {
+            var timestamps = new List<DistanceTimestamp>();
+
+            var distanceValues = distances
+                .Distinct()
+                .OrderBy(d => d)
+                .ToList();
+
+            var rampsEnum = RampResults.GetEnumerator();
+            var ramp = rampsEnum.Current;
+            foreach (var distance in distanceValues)
+            {
+                while (ramp.EndDistance < distance)
+                {
+                    rampsEnum.MoveNext();
+                    ramp = rampsEnum.Current;
+                }
+                ramp.
+            }
+
+            return timestamps;
         }
 
         #region GapClosing

@@ -9,7 +9,7 @@ namespace Point2Point   // using "wrong" namespace here for making extensions av
             calculator.GetStatus(t, out _, out var a, out var v, out _);
             var motionParameter = new RampMotionParameter(calculator.JerkMax, -calculator.JerkMax, calculator.AccelerationMax, -calculator.AccelerationMax);
             var rampResult = RampCalculator.Calculate(a, v, 0, motionParameter);
-            return rampResult.TotalDistance;
+            return rampResult.Length;
         }
     }
 }
