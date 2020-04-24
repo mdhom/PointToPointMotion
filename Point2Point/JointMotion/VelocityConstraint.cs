@@ -1,8 +1,6 @@
-﻿using System;
-
-namespace Point2Point.JointMotion
+﻿namespace Point2Point.JointMotion
 {
-    public class VelocityConstraint : IComparable
+    public class VelocityConstraint
     {
         /// <summary>
         /// Distance [mm] at which the constraint starts
@@ -36,35 +34,65 @@ namespace Point2Point.JointMotion
         /// </summary>
         /// <param name="distance">Distance to check</param>
         /// <returns>True if the given distance is within the constraint</returns>
-        public bool Contains(double distance) 
+        public bool Contains(double distance)
             => Start <= distance && End > distance;
 
         /// <summary>
         /// Creates a copy of this constraint with no references to this constraint
         /// </summary>
         /// <returns>A complete copy of this object</returns>
-        public VelocityConstraint Copy() 
+        public VelocityConstraint Copy()
             => new VelocityConstraint(Start, Length, MaximumVelocity);
 
         /// <summary>
-        /// Compares two VelocityConstraints by their MaximumVelocity
+        /// Reduces the MaximumVelocity of this constraint by the given velocity.
         /// </summary>
-        /// <param name="obj">Object to compare to</param>
-        /// <returns>An integer indicating the comparing</returns>
-        public int CompareTo(object obj)
-        {
-            if (obj is VelocityConstraint constraint)
-            {
-                return MaximumVelocity.CompareTo(constraint.MaximumVelocity);
-            }
+        /// <param name="velocity">Velocity [mm/s] by which the given velocity shoudl be reduced</param>
+        public void ReduceBy(double velocity)
+            => MaximumVelocity -= velocity;
 
-            return 0;
-        }
+        #region Operators between to constraints
 
         public static bool operator >(VelocityConstraint a, VelocityConstraint b)
             => a.MaximumVelocity > b.MaximumVelocity;
 
         public static bool operator <(VelocityConstraint a, VelocityConstraint b)
             => a.MaximumVelocity < b.MaximumVelocity;
+
+        public static bool operator >=(VelocityConstraint a, VelocityConstraint b)
+            => a.MaximumVelocity >= b.MaximumVelocity;
+
+        public static bool operator <=(VelocityConstraint a, VelocityConstraint b)
+            => a.MaximumVelocity <= b.MaximumVelocity;
+
+        public static double operator -(VelocityConstraint a, VelocityConstraint b)
+            => a.MaximumVelocity - b.MaximumVelocity;
+
+        public static double operator +(VelocityConstraint a, VelocityConstraint b)
+            => a.MaximumVelocity - b.MaximumVelocity;
+
+        #endregion
+
+        #region Operators between constraint and double
+
+        public static bool operator >(double a, VelocityConstraint b)
+            => a > b.MaximumVelocity;
+
+        public static bool operator <(double a, VelocityConstraint b)
+            => a < b.MaximumVelocity;
+
+        public static bool operator >(VelocityConstraint a, double b)
+            => a.MaximumVelocity > b;
+
+        public static bool operator <(VelocityConstraint a, double b)
+            => a.MaximumVelocity < b;
+
+        public static double operator -(VelocityConstraint a, double b)
+            => a.MaximumVelocity - b;
+
+        public static double operator +(VelocityConstraint a, double b)
+            => a.MaximumVelocity + b;
+
+        #endregion
     }
 }

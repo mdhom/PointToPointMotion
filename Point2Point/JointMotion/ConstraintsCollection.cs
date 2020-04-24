@@ -78,7 +78,7 @@ namespace Point2Point.JointMotion
         /// <param name="velocity">Velocity [mm/s] which should be checked</param>
         /// <returns>True if any constraint is below the given velocity at the given distance, otherwise false</returns>
         public bool ExeedsAnyConstraint(double distance, double velocity)
-            => this.Any(c => c.Contains(distance) && velocity > c.MaximumVelocity);
+            => this.Any(c => c.Contains(distance) && velocity > c);
 
         struct ConstraintPoint
         {

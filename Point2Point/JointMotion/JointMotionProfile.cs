@@ -431,12 +431,12 @@ namespace Point2Point.JointMotion
             if (index == 0)
             {
                 // first constraint -> no previous constraint -> try reducing velocity for reachability
-                constraint.MaximumVelocity -= reduceByVelocity;
+                constraint.ReduceBy(reduceByVelocity);
             }
             else
             {
                 var previousConstraint = EffectiveConstraints[index - 1];
-                if (!forceMerge && previousConstraint.MaximumVelocity > constraint.MaximumVelocity && previousConstraint.Length > reduceByDistance)
+                if (!forceMerge && previousConstraint > constraint && previousConstraint.Length > reduceByDistance)
                 {
                     // The previous constraint is higher than the given constraint. As it is not allowed
                     // to increase the MaxVel of a constraint, the MaxVel of the previous constraint must be reduced.
@@ -446,11 +446,11 @@ namespace Point2Point.JointMotion
                     constraint.Length += reduceByDistance;
                     previousConstraint.Length -= reduceByDistance;
                 }
-                else if (!forceMerge && previousConstraint.MaximumVelocity < constraint.MaximumVelocity && Math.Abs(previousConstraint.MaximumVelocity - constraint.MaximumVelocity) > reduceByVelocity)
+                else if (!forceMerge && previousConstraint < constraint && Math.Abs(previousConstraint - constraint) > reduceByVelocity)
                 {
                     // The previous constraint is below the given constraint. Therefore, the given constraints MaxVelo
                     // must be reduced. Because that could be a waste of "high velocity time", this is done interatively.
-                    constraint.MaximumVelocity -= reduceByVelocity;
+                    constraint.ReduceBy(reduceByVelocity);
                 }
                 else
                 {

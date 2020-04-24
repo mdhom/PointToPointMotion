@@ -2,9 +2,9 @@
 {
     public class VelocityPoint
     {
-        public double Distance { get; set; }
-        public double Velocity { get; set; }
-        public VelocityConstraint CorrespondingConstraint { get; set; }
+        public double Distance { get; }
+        public double Velocity { get; }
+        public VelocityConstraint CorrespondingConstraint { get; }
 
         public VelocityPoint(double distance, double velocity, VelocityConstraint correspondingConstraint)
         {
