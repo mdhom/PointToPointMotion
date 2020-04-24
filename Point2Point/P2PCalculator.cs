@@ -261,7 +261,7 @@ namespace Point2Point
                     return;
                 case 2:
                 case 4:
-                    tj = CubeRoot.Get(s / (2 * JerkMax));
+                    tj = MathematicTools.GetCubeRoot(s / (2 * JerkMax));
                     ta = tj;
                     tv = 2 * tj;
                     return;

@@ -146,36 +146,39 @@ namespace Shuttles.Base.Devices.Shuttles.Motion.Ramp
             var t2 = 0.0;
             var t3 = -(decMax / jPos);
 
-            //2. Fahrprofil mit oder ohne flacher Phase
+            // does profile reach constant a?
             var v_bya0_Ph1 = t1 * a0;
             var v_byjD_Ph1 = 0.5 * jNeg * t1 * t1;
             var v_bya1_Ph3 = t3 * (a0 + jNeg * t1);
             var v_byjA_Ph3 = 0.5 * jPos * t3 * t3;
-            var v_total = v0 + v_bya0_Ph1 + v_byjD_Ph1 + v_bya1_Ph3 + v_byjA_Ph3;
+            var vTotal = v0 + v_bya0_Ph1 + v_byjD_Ph1 + v_bya1_Ph3 + v_byjA_Ph3;
 
-            if (CheckForFlatRampPart(v_total, targetVelocity, result))                 // Flache Phase wird benötigt, um das gewüschte Ziel zu erreichen!
+            if (CheckForFlatRampPart(vTotal, targetVelocity, result.Direction))
             {
-                t1 = (decMax - a0) / jNeg;                                           // Zeit um aMaxDec zu erreichen
-                t3 = Math.Abs(decMax / jPos);                                      // Zeit um aMaxDec wirder abzubauen 
-                var v_Decc = 0.5 * jNeg * (t1 * t1) + a0 * t1;                 // v die in t1 erreicht wird
-                var v_Acc = -0.5 * jPos * (t3 * t3);                           // v die in t3 erzeugt wird
+                // constant a will be reached
+                t1 = (decMax - a0) / jNeg;
+                t3 = Math.Abs(decMax / jPos);
+                var v_Decc = 0.5 * jNeg * (t1 * t1) + a0 * t1;
+                var v_Acc = -0.5 * jPos * (t3 * t3);
                 t2 = (targetVelocity - (v_Decc + v_Acc + v0)) / decMax;
             }
-            else                                                                // Flache Phase wird nicht benötigt --> berechnen welche Beschleunigung erreicht werden darf!
+            else
             {
-                double jerk = 0;
-                double t = 0;
+                // constant a will not be reached
+                // => calculate max reachable a
+                double jerk;
+                double t;
                 if (a0 < 0)
                 {
                     jerk = MotionParameter.PositiveJerk;
-                    t = (0 - a0) / jerk;
+                    t = -a0 / jerk;
                 }
                 else if (a0 > 0)
                 {
                     jerk = MotionParameter.NegativeJerk;
-                    t = (0 - a0) / jerk;
+                    t = -a0 / jerk;
                 }
-                else if (a0 == 0)
+                else
                 {
                     t = 0;
                     jerk = 0;
@@ -185,7 +188,6 @@ namespace Shuttles.Base.Devices.Shuttles.Motion.Ramp
                 // Geschwindigkeit die erreicht werden würde (v_bya0_to0), falls a0 auf 0 gezogen wird. Dies ist das aussschlagebende Kriterium, ob beschleunigt oder gebremst werden muss
                 // Bsp.: v0 =200, a0= -112 , vTarget = 190  Nur durch den Abbau von a0 auf 0 wird eine Geschwindigkeit von ca. 187 erreicht --> es muss mathematisch beschleunigt werden, um die Zieglgeschwindigkeit zu erreichen
                 var v_bya0_to0 = v0 + t * a0 + 0.5 * jerk * t * t;
-
                 if (v_bya0_to0 > targetVelocity)
                 {
                     Inverted = result.Direction == RampDirection.Accelerate;
@@ -207,12 +209,11 @@ namespace Shuttles.Base.Devices.Shuttles.Motion.Ramp
                 var b = a0 - a0 * (jNeg / jPos);
                 var c = v0 - targetVelocity - a0 * a0 / (2 * jPos);
 
-                if (QuadraticEquation(a, b, c, out var x1, out var x2))
+                if (MathematicTools.SolveEquation(a, b, c, out var x1, out var x2))
                 {
                     CalculateAllTimes(x1, x2, jPos, jNeg, a0, out t1, out t2, out t3);
                 }
             }
-
 
             var a1 = a0 + jNeg * t1;
             var v1 = v0 + a0 * t1 + 0.5 * jNeg * t1 * t1;
@@ -256,31 +257,16 @@ namespace Shuttles.Base.Devices.Shuttles.Motion.Ramp
             }
         }
 
-        private static bool CheckForFlatRampPart(double v_total, double vTarget, RampCalculationResult result)
+        private static bool CheckForFlatRampPart(double vTotal, double vTarget, RampDirection direction)
         {
-            if (result.Direction == RampDirection.Decelerate)
+            if (direction == RampDirection.Decelerate)
             {
-                return v_total > vTarget;
+                return vTotal > vTarget;
             }
             else
             {
-                return v_total <= vTarget;
+                return vTotal <= vTarget;
             }
-        }
-
-        public static bool QuadraticEquation(double a, double b, double c, out double x1, out double x2)
-        {
-            x1 = 0;
-            x2 = 0;
-            var root = Math.Sqrt(b * b - 4 * a * c);
-            if (root >= 0 && a != 0)
-            {
-                x1 = (-b + root) / (2 * a);
-                x2 = (-b - root) / (2 * a);
-                return true;
-            }
-
-            return false;
         }
 
         #endregion
