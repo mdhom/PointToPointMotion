@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Servus.Core;
 using Shuttles.Base.Devices.Shuttles.Motion.Ramp;
 
 namespace Point2Point.JointMotion
@@ -9,7 +10,7 @@ namespace Point2Point.JointMotion
     {
         public RampMotionParameter Parameters { get; }
 
-        public ConstraintsCollection EffectiveConstraints { get; private set; }
+        public ConstraintsCollection EffectiveConstraints { get; }
         public List<VelocityPoint> VelocityProfilePoints { get; private set; }
         public List<RampCalculationResult> RampResults { get; private set; }
         public List<double> TimesAtVelocityPoints { get; private set; }
