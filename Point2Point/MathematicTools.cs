@@ -1,4 +1,9 @@
-﻿namespace System
+﻿using System;
+using System.Runtime.CompilerServices;
+
+[assembly:InternalsVisibleTo("Point2Point.Tests")]
+
+namespace Point2Point
 {
     internal static class MathematicTools
     {
@@ -11,18 +16,24 @@
 
         public static bool SolveEquation(double a, double b, double c, out double x1, out double x2)
         {
+            if (a == 0 && b == 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(a), $"a and b must not be zero together, because it is no equation anymore");
+            }
+
             x1 = 0;
             x2 = 0;
             if (a == 0)
             {
-                // it is no quadratic equation!
+                // linear equation bx+c=0
                 x1 = -c / b;
                 x2 = x1;
                 return true;
             }
             else
             {
-                // solve quadratic equation with "Mitternachtsformel"
+                // quadratic equation ax²+bx+c=0
+                // solve with "Mitternachtsformel"
                 var determinant = b * b - 4 * a * c;
                 if (determinant < 0)
                 {

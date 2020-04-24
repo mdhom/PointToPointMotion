@@ -1,4 +1,5 @@
 ﻿using System;
+using Point2Point;
 
 namespace Shuttles.Base.Devices.Shuttles.Motion.Ramp
 {
