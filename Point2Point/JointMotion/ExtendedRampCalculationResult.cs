@@ -6,11 +6,13 @@ namespace Point2Point.JointMotion
     {
         public double StartDistance { get; set; }
         public double EndDistance => StartDistance + Length;
+        public double StartDuration { get; set; }
 
-        public ExtendedRampCalculationResult(RampCalculationResult result, double startDistance)
+        public ExtendedRampCalculationResult(RampCalculationResult result, double startDistance, double startDuration)
             : base(result)
         {
             StartDistance = startDistance;
+            StartDuration = startDuration;
         }
     }
 }

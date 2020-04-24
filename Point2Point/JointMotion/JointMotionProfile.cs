@@ -60,7 +60,7 @@ namespace Point2Point.JointMotion
             }
 #endif
 
-            Timestamps = CalculateTimestampsAtConstraintOriginalDistances();
+            Timestamps = CalculateTimestampsAtConstraintOriginalDistances().ToList();
         }
 
         public JointMotionProfile(RampMotionParameter parameters, IEnumerable<VelocityConstraint> constraints)
@@ -233,7 +233,14 @@ namespace Point2Point.JointMotion
                 var pFrom = velocityPoints[i];
                 var pTo = velocityPoints[i + 1];
 
-                var ramp = new ExtendedRampCalculationResult(RampCalculator.Calculate(pFrom.Velocity, pTo.Velocity, Parameters), pFrom.Distance);
+                var ramp = new ExtendedRampCalculationResult(RampCalculator.Calculate(pFrom.Velocity, pTo.Velocity, Parameters), pFrom.Distance, timeSum);
+                var duration = ramp.Direction == RampDirection.Constant ? (pTo.Distance - pFrom.Distance) / pTo.Velocity : ramp.TotalDuration;
+                if (ramp.Direction == RampDirection.Constant)
+                {
+                    ramp.Length = pTo.Distance - pFrom.Distance;
+                    ramp.TotalDuration = duration;
+                }
+
                 rampResults.Add(ramp);
 
                 if (ramp.Direction != RampDirection.Constant && Math.Abs(ramp.Length - (pTo.Distance - pFrom.Distance)) > 1e-8)
@@ -241,7 +248,6 @@ namespace Point2Point.JointMotion
                     throw new JointMotionCalculationException($"Calculated distance differs from velocityPoints distance");
                 }
 
-                var duration = ramp.Direction == RampDirection.Constant ? (pTo.Distance - pFrom.Distance) / pTo.Velocity : ramp.TotalDuration;
                 if (double.IsNaN(duration) || double.IsInfinity(duration))
                 {
                     throw new JointMotionCalculationException($"Invalid duration ({duration}) on point {i} at {pFrom.Distance}");
@@ -263,31 +269,35 @@ namespace Point2Point.JointMotion
             return true;
         }
 
-        private List<DistanceTimestamp> CalculateTimestampsAtConstraintOriginalDistances()
+        private IEnumerable<DistanceTimestamp> CalculateTimestampsAtConstraintOriginalDistances()
             => CalculateTimestamps(OriginalConstraints.SelectMany(c => new[] { c.Start, c.End }));
 
-        public List<DistanceTimestamp> CalculateTimestamps(IEnumerable<double> distances)
+        public IEnumerable<DistanceTimestamp> CalculateTimestamps(IEnumerable<double> distances)
         {
-            var timestamps = new List<DistanceTimestamp>();
-
             var distanceValues = distances
                 .Distinct()
                 .OrderBy(d => d)
                 .ToList();
 
-            var rampsEnum = RampResults.GetEnumerator();
-            var ramp = rampsEnum.Current;
+            var rampIndex = 0;
+            var timesSum = 0.0;
             foreach (var distance in distanceValues)
             {
-                while (ramp.EndDistance < distance)
+                while (RampResults[rampIndex].EndDistance < distance)
                 {
-                    rampsEnum.MoveNext();
-                    ramp = rampsEnum.Current;
+                    timesSum += RampResults[rampIndex].TotalDuration;
+                    rampIndex++;
                 }
-                ramp.
+                if (RampResults[rampIndex].Direction == RampDirection.Constant)
+                {
+                    yield return new DistanceTimestamp(distance, timesSum + (distance - RampResults[rampIndex].StartDistance) / RampResults[rampIndex].vFrom);
+                }
+                else
+                {
+                    var t = RampCalculator.GetTimeAt(RampResults[rampIndex], distance - RampResults[rampIndex].StartDistance);
+                    yield return new DistanceTimestamp(distance, timesSum + t);
+                }
             }
-
-            return timestamps;
         }
 
         #region GapClosing

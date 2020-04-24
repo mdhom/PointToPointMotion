@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Numerics;
 using Point2Point;
 using Point2Point.JointMotion;
 
@@ -99,30 +101,40 @@ namespace Shuttles.Base.Devices.Shuttles.Motion.Ramp
             }
         }
 
-        public double GetTimeAt(RampCalculationResult ramp, double s)
+        /// <summary>
+        /// Calculates the time [s], at which the profile has reached the given distance within ramp.
+        /// </summary>
+        /// <param name="ramp">Ramp, for which time should be calculated</param>
+        /// <param name="distanceWithinRamp">Distance [mm] from beginning of the ramp. If you work with global distances
+        /// within profiles, you may need to substract the start distance of the ramp before calling this method.</param>
+        /// <returns>Time [s] at which the given distance is reached</returns>
+        public static double GetTimeAt(ExtendedRampCalculationResult ramp, double distanceWithinRamp)
         {
-            if (s > ramp.Length)
+            if (distanceWithinRamp > ramp.Length)
             {
-                throw new ArgumentOutOfRangeException(nameof(s), $"s ({s:2}mm) must be smaller than length of ramp ({ramp.Length:2}mm)");
+                throw new ArgumentOutOfRangeException(nameof(distanceWithinRamp), $"DistanceWithinRamp ({distanceWithinRamp:2}mm) must be smaller than length of ramp ({ramp.Length:2}mm)");
             }
 
-            var j1 = ramp.Parameters.PositiveJerk;
+            var s = distanceWithinRamp;
+            var j1 = ramp.Direction == RampDirection.Accelerate ? ramp.Parameters.PositiveJerk : ramp.Parameters.NegativeJerk;
             if (s <= ramp.Phase1Length)
             {
                 // point lies within phase 1
                 // a t³ + c t + d =0
                 var a = 1.0 / 6 * j1;
-                var c = -ramp.vFrom;
-                var d = s;
+                var c = ramp.vFrom;
+                var d = -s;
 
-                //TODO solve cubic equation
+                var cubicResult = Math.Abs(SolveCubicEquation(a, 0, c, d));
+                return cubicResult;
             }
             else
             { 
+                // calculate state at end of phase 1
                 var t1 = ramp.Phase1Duration;
                 var a1 = j1 * t1;
                 var v1 = ramp.vFrom + 0.5 * j1 * t1 * t1;
-                var s1 = ramp.vFrom * t1 + 1.0 / 6 * ramp.Parameters.PositiveJerk * t1 * t1 * t1;
+                var s1 = ramp.vFrom * t1 + 1.0 / 6 * j1 * t1 * t1 * t1;
 
                 if (s <= ramp.Phase1Length + ramp.Phase2Length)
                 {
@@ -130,33 +142,143 @@ namespace Shuttles.Base.Devices.Shuttles.Motion.Ramp
                     // a t² + b t + c = 0
                     var a = 0.5 * a1;
                     var b = v1;
-                    var c = s1;
+                    var c = s1 - s;
                     if (!MathematicTools.SolveEquation(a, b, c, out var t_1, out var t_2))
                     {
                         throw new JointMotionCalculationException($"Failed to solve quadratic equation with a={a:N3}, b={b:N3} and c={c:N3}");
                     }
 
-                    return t_1 < 0 ? t_2 : t_1;
+                    var quadraticResult = Math.Abs(t_1 < 0 ? t_2 : t_1);
+                    return t1 + quadraticResult;
                 }
                 else
                 {
                     // point lies within phase 3
+                    // calculate state at end of phase 2
                     var t2 = ramp.Phase2Duration;
                     var a2 = a1;
                     var v2 = v1 + a1 * t2;
                     var s2 = s1 + v1 * t2 + 0.5 * a1 * t2 * t2;
 
-                    var j3 = ramp.Parameters.NegativeJerk;
-
+                    // calculate state within phase 3
+                    var j3 = -j1;
                     // a t³ + b t² + c t + d = 0
-                    var a = -1.0 / 6 * j3;
+                    var a = 1.0 / 6 * j3;
                     var b = 0.5 * a2;
                     var c = v2;
-                    var d = s2;
+                    var d = s2 - s;
 
-                    //TODO solve cubic equation
+                    var cubicResult = Math.Abs(SolveCubicEquation(a, b, c, d));
+                    if (double.IsNaN(cubicResult)) // there are some case where method 1 fails, then call method 2
+                    {
+                        cubicResult = SolveCubic(a, b, c, d)[0].Real;
+                    }
+                    return t1 + t2 + cubicResult;
                 }
             }
+        }
+
+        private static List<Complex> SolveCubic(double a, double b, double c, double d)
+        {
+            const int NRoots = 3;
+            var SquareRootof3 = Math.Sqrt(3);
+            // the 3 cubic roots of 1
+            var CubicUnity = new List<Complex>(NRoots)
+                        { new Complex(1, 0), new Complex(-0.5, -SquareRootof3 / 2.0), new Complex(-0.5, SquareRootof3 / 2.0) };
+            // intermediate calculations
+            var DELTA = 18 * a * b * c * d - 4 * b * b * b * d + b * b * c * c - 4 * a * c * c * c - 27 * a * a * d * d;
+            var DELTA0 = b * b - 3 * a * c;
+            var DELTA1 = 2 * b * b * b - 9 * a * b * c + 27 * a * a * d;
+            Complex DELTA2 = -27 * a * a * DELTA;
+            var C = Complex.Pow((DELTA1 + Complex.Pow(DELTA2, 0.5)) / 2, 1 / 3.0); //Phew...
+            var R = new List<Complex>(NRoots);
+            for (var i = 0; i < NRoots; i++)
+            {
+                var M = CubicUnity[i] * C;
+                var Root = -1.0 / (3 * a) * (b + M + DELTA0 / M);
+                R.Add(Root);
+            }
+            return R;
+        }
+
+        private static double SolveCubicEquation(double A, double B, double C, double D)
+        {
+            var p = (9 * A * C - 3 * B * B) / (9 * A * A);
+            var q = (2 * B * B * B - 9 * A * B * C + 27 * A * A * D) / (27 * A * A * A);
+            var diskriminante = (27 * A * A * D * D + 4 * B * B * B * D - 18 * A * B * C * D + 4 * A * C * C * C - B * B * C * C) / (108 * A * A * A * A);
+            var d1Mats = double.NaN;
+            if (true) // p < 0
+            {
+                var h1 = Math.Sqrt(-p * 4 / 3);
+                var h2 = -q / 2 * Math.Sqrt(-27.0 / (p * p * p));
+                if (Math.Abs(h2) > 1)
+                {
+                    // ERROR!
+                }
+                var h3 = (1.0 / 3) * Math.Acos(h2);
+                var h4 = B / (3 * A);
+                if (diskriminante < 0)
+                {
+                    var x2 = -h1 * Math.Cos(h3 + (Math.PI / 3)) - h4;
+                    var x1 = h1 * Math.Cos(h3) - h4;
+                    var x3 = -h1 * Math.Cos(h3 - Math.PI / 3) - h4;
+
+                    if (Math.Abs(x1) < Math.Abs(x2) && Math.Abs(x1) < Math.Abs(x3))
+                    {
+                        d1Mats = x1;
+                    }
+                    else if (Math.Abs(x2) < Math.Abs(x1) && Math.Abs(x2) < Math.Abs(x3))
+                    {
+                        d1Mats = x2;
+                    }
+                    else
+                    {
+                        d1Mats = x3;
+                    }
+                }
+                else if (diskriminante == 0 && p == 0)
+                {
+                    d1Mats = -B / (3 * A);
+                }
+                else if (diskriminante == 0 && p != 0)
+                {
+                    var x1 = (B * B * B - 4 * A * B * C + 9 * A * A * D) / (3 * A * A * C - A * B * B);
+                    var x2 = (A * B * C - 9 * A * A * D) / (6 * A * A * C - 2 * A * B * B);
+                    if (Math.Abs(x1) < Math.Abs(x2))
+                    {
+                        d1Mats = x1;
+                    }
+                    else
+                    {
+                        d1Mats = x2;
+                    }
+                }
+                else if (diskriminante > 0)
+                {
+                    var u = -(q / 2) + Math.Sqrt(diskriminante);
+                    if (u >= 0)
+                    {
+                        u = MathematicTools.GetCubeRoot(u);
+                    }
+                    else
+                    {
+                        u = -MathematicTools.GetCubeRoot(-u);
+                    }
+                    var v = -(q / 2) - Math.Sqrt(diskriminante);
+                    if (v >= 0)
+                    {
+                        v = MathematicTools.GetCubeRoot(v);
+                    }
+                    else
+                    {
+                        v = -MathematicTools.GetCubeRoot(-v);
+                    }
+
+                    d1Mats = u + v - (B / (3 * A));
+                }
+            }
+
+            return d1Mats;
         }
 
         #region Calculation

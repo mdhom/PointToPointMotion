@@ -34,6 +34,9 @@
             Phase1Duration = result.Phase1Duration;
             Phase2Duration = result.Phase2Duration;
             Phase3Duration = result.Phase3Duration;
+            Phase1Length = result.Phase1Length;
+            Phase2Length = result.Phase2Length;
+            Phase3Length = result.Phase3Length;
             Length = result.Length;
             TotalDuration = result.TotalDuration;
         }

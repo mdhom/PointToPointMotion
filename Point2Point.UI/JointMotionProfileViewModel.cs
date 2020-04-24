@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.Win32;
 using Newtonsoft.Json;
 using OxyPlot;
+using OxyPlot.Annotations;
 using OxyPlot.Axes;
 using OxyPlot.Series;
 using Point2Point.JointMotion;
@@ -347,7 +348,7 @@ namespace Point2Point.UI
             {
                 Title = "Profile",
                 Color = OxyColors.Red,
-                ItemsSource = new List<DataPoint>()
+                ItemsSource = new List<DataPoint>(),
             };
 
             try
@@ -362,6 +363,16 @@ namespace Point2Point.UI
 
                     (jointSerie.ItemsSource as List<DataPoint>).Add(new DataPoint(s, v));
                     (velocityProfileSerie.ItemsSource as List<DataPoint>).Add(new DataPoint(t, v));
+                }
+
+                foreach (var time in jointMotionProfile.Timestamps)
+                {
+                    plotModelVelocityProfile.Annotations.Add(new LineAnnotation()
+                    {
+                        StrokeThickness = 3,
+                        Type = LineAnnotationType.Vertical,
+                        X = time.Time
+                    });
                 }
             }
 #pragma warning disable CS0168 // needed for debugging with breakpoints
