@@ -231,12 +231,12 @@ namespace Point2Point.JointMotion
                 var ramp = RampCalculator.Calculate(pFrom.Velocity, pTo.Velocity, Parameters);
                 rampResults.Add(ramp);
 
-                if (!ramp.IsFlat && Math.Abs(ramp.TotalDistance - (pTo.Distance - pFrom.Distance)) > 1e-8)
+                if (ramp.Direction != RampDirection.Constant && Math.Abs(ramp.TotalDistance - (pTo.Distance - pFrom.Distance)) > 1e-8)
                 {
-                    // Ouch!
+                    throw new JointMotionCalculationException($"Calculated distance differs from velocityPoints distance");
                 }
 
-                var duration = ramp.IsFlat ? (pTo.Distance - pFrom.Distance) / pTo.Velocity : ramp.TotalDuration;
+                var duration = ramp.Direction == RampDirection.Constant ? (pTo.Distance - pFrom.Distance) / pTo.Velocity : ramp.TotalDuration;
                 if (double.IsNaN(duration) || double.IsInfinity(duration))
                 {
                     throw new JointMotionCalculationException($"Invalid duration ({duration}) on point {i} at {pFrom.Distance}");

@@ -99,6 +99,22 @@ namespace Shuttles.Base.Devices.Shuttles.Motion.Ramp
 
         #region Calculation
 
+        private RampDirection GetDirection(double targetVelocity)
+        {
+            if (Math.Abs(InitialVelocity - targetVelocity) < 1e-8)
+            {
+                return RampDirection.Constant;
+            }
+            else if (targetVelocity < InitialVelocity)
+            {
+                return RampDirection.Decelerate;
+            }
+            else
+            {
+                return RampDirection.Accelerate;
+            }
+        }
+
         private RampCalculationResult Calculate(double targetVelocity)
         {
             var result = new RampCalculationResult
@@ -106,12 +122,10 @@ namespace Shuttles.Base.Devices.Shuttles.Motion.Ramp
                 Parameters = MotionParameter,
                 vFrom = InitialVelocity,
                 vTo = targetVelocity,
-                //1. Bestimmung ob Bremsen oder Beschleuningen
-                Direction = targetVelocity < InitialVelocity ? RampDirection.Decelerate : RampDirection.Accelerate,
-                IsFlat = Math.Abs(InitialVelocity - targetVelocity) < 1e-8
+                Direction = GetDirection(targetVelocity)
             };
 
-            if (result.IsFlat)
+            if (result.Direction == RampDirection.Constant)
             {
                 return result;
             }

@@ -2,7 +2,8 @@
 {
     public enum RampDirection
     {
-        Accelerate = 1,
-        Decelerate = 2
+        Constant,
+        Accelerate,
+        Decelerate
     }
 }
