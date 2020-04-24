@@ -9,13 +9,13 @@ namespace Point2Point.JointMotion
     public class JointMotionProfile
     {
         public RampMotionParameter Parameters { get; }
-
         public ConstraintsCollection EffectiveConstraints { get; }
+        public int NumRecalculations { get; }
+
         public List<VelocityPoint> VelocityProfilePoints { get; private set; }
         public List<RampCalculationResult> RampResults { get; private set; }
         public List<double> TimesAtVelocityPoints { get; private set; }
         public double TotalDuration { get; private set; }
-        public int NumRecalculations { get; }
 
 #if DEBUG
         public List<ConstraintsCollection> EffectiveConstraintsHistory { get; private set; }
@@ -426,8 +426,8 @@ namespace Point2Point.JointMotion
         /// <returns>True if constraint was completely merged, otherwise false</returns>
         private bool MergeWithPreviousConstraint(VelocityConstraint constraint, int index, bool forceMerge = false)
         {
-            const double reduceByDistance = 100;    // mm
-            const double reduceByVelocity = 50;     // mm/s
+            const double reduceByDistance = 100; // mm
+            const double reduceByVelocity = 50;  // mm/s
 
             if (index == 0)
             {
