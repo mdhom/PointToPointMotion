@@ -29,8 +29,10 @@ namespace Point2Point.JointMotion
             EffectiveConstraints = constraints.GetEffectiveConstraints();
 
 #if DEBUG
-            EffectiveConstraintsHistory = new List<ConstraintsCollection>();
-            EffectiveConstraintsHistory.Add(new ConstraintsCollection(EffectiveConstraints.Select(ec => ec.Copy())));
+            EffectiveConstraintsHistory = new List<ConstraintsCollection>
+            {
+                new ConstraintsCollection(EffectiveConstraints.Select(ec => ec.Copy()))
+            };
 
             CloseHighTightGapsIteratively();
 

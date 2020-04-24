@@ -1,12 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows.Input;
 using Microsoft.Win32;
 using Newtonsoft.Json;
 using OxyPlot;
@@ -365,7 +363,11 @@ namespace Point2Point.UI
                     (velocityProfileSerie.ItemsSource as List<DataPoint>).Add(new DataPoint(t, v));
                 }
             }
+#pragma warning disable CS0168 // needed for debugging with breakpoints
+#pragma warning disable IDE0059 // needed for debugging with breakpoints
             catch (Exception ex)
+#pragma warning restore IDE0059
+#pragma warning restore CS0168
             {
                 if (RandomTestRunning)
                 {
