@@ -5,6 +5,8 @@ namespace Point2Point.JointMotion
 {
     public class ConstraintsCollection : List<VelocityConstraint>
     {
+        #region Constructors
+
         public ConstraintsCollection()
         {
         }
@@ -19,6 +21,14 @@ namespace Point2Point.JointMotion
         {
         }
 
+        #endregion
+
+        /// <summary>
+        /// Calculates the effective constraints of the ConstraintsCollection. Constraints or part of
+        /// constraints which are above other constraints (and therefore will never be reached by a
+        /// velocity profile) are removed and merged into a closed profile of constraints.
+        /// </summary>
+        /// <returns>A new ConstraintCollection with no overlapping constraints</returns>
         public ConstraintsCollection GetEffectiveConstraints()
         {
             var distanceValues = this
@@ -70,7 +80,7 @@ namespace Point2Point.JointMotion
         public bool ExeedsAnyConstraint(double distance, double velocity)
             => this.Any(c => c.Contains(distance) && velocity > c.MaximumVelocity);
 
-        private struct ConstraintPoint
+        struct ConstraintPoint
         {
             public double Distance { get; }
             public double Velocity { get; }
