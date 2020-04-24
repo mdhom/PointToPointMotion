@@ -38,7 +38,7 @@ namespace Shuttles.Base.Devices.Shuttles.Motion.Ramp
             var t2 = t1 + ramp.Phase2Duration;
             var t3 = t2 + ramp.Phase3Duration;
 
-            var jMax = ramp.MotionState == RampMotionState.Accelerate ? ramp.Parameters.PositiveJerk : ramp.Parameters.NegativeJerk;
+            var jMax = ramp.Direction == RampDirection.Accelerate ? ramp.Parameters.PositiveJerk : ramp.Parameters.NegativeJerk;
             var v0 = ramp.vFrom;
 
             if (t <= t1)
@@ -107,11 +107,11 @@ namespace Shuttles.Base.Devices.Shuttles.Motion.Ramp
                 vFrom = InitialVelocity,
                 vTo = targetVelocity,
                 //1. Bestimmung ob Bremsen oder Beschleuningen
-                MotionState = targetVelocity < InitialVelocity ? RampMotionState.Brake : RampMotionState.Accelerate,
-                Flat = Math.Abs(InitialVelocity - targetVelocity) < 1e-8
+                Direction = targetVelocity < InitialVelocity ? RampDirection.Decelerate : RampDirection.Accelerate,
+                IsFlat = Math.Abs(InitialVelocity - targetVelocity) < 1e-8
             };
 
-            if (result.Flat)
+            if (result.IsFlat)
             {
                 return result;
             }
@@ -119,7 +119,7 @@ namespace Shuttles.Base.Devices.Shuttles.Motion.Ramp
             var decMax = MotionParameter.MaximumDecceleration;
             var jPos = MotionParameter.PositiveJerk;
             var jNeg = MotionParameter.NegativeJerk;
-            if (result.MotionState == RampMotionState.Accelerate)
+            if (result.Direction == RampDirection.Accelerate)
             {
                 decMax = MotionParameter.MaximumAcceleration;
                 jPos = MotionParameter.NegativeJerk;
@@ -174,17 +174,15 @@ namespace Shuttles.Base.Devices.Shuttles.Motion.Ramp
 
                 if (v_bya0_to0 > targetVelocity)
                 {
-                    Inverted = result.MotionState == RampMotionState.Accelerate;
+                    Inverted = result.Direction == RampDirection.Accelerate;
                 }
                 else
                 {
-                    Inverted = result.MotionState != RampMotionState.Accelerate;
+                    Inverted = result.Direction != RampDirection.Accelerate;
                 }
 
                 if (Inverted)  // Beschleuningen falls wir bremsen ---> Bremsen falls beschleunigen
                 {
-                    result.Invert();
-
                     var tmp = jNeg;
                     jNeg = jPos;
                     jPos = tmp;
@@ -246,7 +244,7 @@ namespace Shuttles.Base.Devices.Shuttles.Motion.Ramp
 
         private static bool CheckForFlatRampPart(double v_total, double vTarget, RampCalculationResult result)
         {
-            if (result.MotionState == RampMotionState.Brake)
+            if (result.Direction == RampDirection.Decelerate)
             {
                 return v_total > vTarget;
             }

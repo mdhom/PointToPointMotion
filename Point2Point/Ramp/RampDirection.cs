@@ -1,8 +1,8 @@
 ﻿namespace Shuttles.Base.Devices.Shuttles.Motion.Ramp
 {
-    public enum RampMotionState
+    public enum RampDirection
     {
         Accelerate = 1,
-        Brake = 2
+        Decelerate = 2
     }
 }

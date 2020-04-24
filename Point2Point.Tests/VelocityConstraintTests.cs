@@ -1,4 +1,5 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using System;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Point2Point.JointMotion;
 
 namespace Point2Point.Tests
@@ -7,12 +8,21 @@ namespace Point2Point.Tests
     public class VelocityConstraintTests
     {
         [TestMethod]
+        public void ParametersAreValidated()
+        {
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => new VelocityConstraint(0, -1, 100));
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => new VelocityConstraint(0, 0, 100));
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => new VelocityConstraint(0, 100, -1));
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => new VelocityConstraint(0, 100, 0));
+        }
+
+        [TestMethod]
         public void RelationalOperatorsWork()
         {
             // Arrange
-            var con0 = new VelocityConstraint(0, 0, 100);
-            var con1 = new VelocityConstraint(0, 0, 200);
-            var con2 = new VelocityConstraint(0, 0, 200);
+            var con0 = new VelocityConstraint(0, 10, 100);
+            var con1 = new VelocityConstraint(0, 10, 200);
+            var con2 = new VelocityConstraint(0, 10, 200);
 
             // Act & Assert
             Assert.IsTrue(con0 < con1);
@@ -37,9 +47,9 @@ namespace Point2Point.Tests
         public void MathematicalOperatorsWork()
         {
             // Arrange
-            var con0 = new VelocityConstraint(0, 0, 100);
-            var con1 = new VelocityConstraint(0, 0, 200);
-            var con2 = new VelocityConstraint(0, 0, 200);
+            var con0 = new VelocityConstraint(0, 10, 100);
+            var con1 = new VelocityConstraint(0, 10, 200);
+            var con2 = new VelocityConstraint(0, 10, 200);
 
             // Act
             var diff0 = con1 - con0;
@@ -60,7 +70,7 @@ namespace Point2Point.Tests
         public void ReduceByWorks()
         {
             // Arrange
-            var con = new VelocityConstraint(0, 0, 100);
+            var con = new VelocityConstraint(0, 10, 100);
 
             // Act
             con.ReduceBy(50);

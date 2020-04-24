@@ -2,7 +2,7 @@
 {
     public struct RampCalculationResult
     {
-        public bool Flat { get; set; }
+        public bool IsFlat { get; set; }
 
         public RampMotionParameter Parameters { get; set; }
 
@@ -16,17 +16,7 @@
         public double TotalDistance { get; set; }
         public double TotalDuration { get; set; }
 
-        public double AccDeccReached_Square { get; set; }
-        public double AccDeccReached { get; set; }
-
-        public RampMotionState MotionState { get; set; }
-
-        public bool InvertedAccDeccState { get; set; }
-
-        public void Invert()
-        {
-            InvertedAccDeccState = !InvertedAccDeccState;
-        }
+        public RampDirection Direction { get; set; }
 
         public bool IsReachable(double availableDistance)
             => TotalDistance <= availableDistance;
