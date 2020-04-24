@@ -11,6 +11,7 @@ using OxyPlot;
 using OxyPlot.Axes;
 using OxyPlot.Series;
 using Point2Point.JointMotion;
+using Servus.Core;
 using Servus.Core.Ui;
 using Shuttles.Base.Devices.Shuttles.Motion.Ramp;
 
@@ -366,7 +367,7 @@ namespace Point2Point.UI
 #pragma warning disable CS0168 // needed for debugging with breakpoints
 #pragma warning disable IDE0059 // needed for debugging with breakpoints
             catch (Exception ex)
-#pragma warning restore IDE0059
+#pragma warning restore CS0168
 #pragma warning restore CS0168
             {
                 if (RandomTestRunning)
