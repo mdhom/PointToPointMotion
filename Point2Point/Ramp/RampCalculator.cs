@@ -112,7 +112,14 @@ namespace Shuttles.Base.Devices.Shuttles.Motion.Ramp
         {
             if (distanceWithinRamp > ramp.Length)
             {
-                throw new ArgumentOutOfRangeException(nameof(distanceWithinRamp), $"DistanceWithinRamp ({distanceWithinRamp:2}mm) must be smaller than length of ramp ({ramp.Length:2}mm)");
+                if (Math.Abs(distanceWithinRamp - ramp.Length) > 1e-3)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(distanceWithinRamp), $"DistanceWithinRamp ({distanceWithinRamp:2}mm) must be smaller than length of ramp ({ramp.Length:2}mm)");
+                }
+                else
+                {
+                    distanceWithinRamp = ramp.Length;
+                }
             }
 
             var s = distanceWithinRamp;

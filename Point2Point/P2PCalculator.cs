@@ -112,14 +112,7 @@ namespace Point2Point
                                 {
                                     GetStatus6(t6, a5, v5, s5, out var j6, out var a6, out var v6, out var s6);
 
-                                    if (t <= t7)
-                                    {
-                                        GetStatus7(t, a6, v6, s6, out j, out a, out v, out s);
-                                    }
-                                    else
-                                    {
-                                        throw new ArgumentOutOfRangeException($"Given time t must be lower than t7 which is {t7:N2} at the moment");
-                                    }
+                                    GetStatus7(Math.Min(t, t7), a6, v6, s6, out j, out a, out v, out s);
                                 }
                             }
                         }
