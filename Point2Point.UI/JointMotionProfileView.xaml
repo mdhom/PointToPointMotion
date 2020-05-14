@@ -52,6 +52,8 @@
             </Button>
 
             <TextBlock Text="{Binding NumRecalculations, StringFormat='NumRecalculations: {0}'}" />
+
+            <TextBox Text="{Binding InitialVelocity}" Margin="20,0,0,0" HorizontalContentAlignment="Right" Width="100" />
         </StackPanel>
 
         <oxy:PlotView Grid.Row="1" Model="{Binding PlotModel}">

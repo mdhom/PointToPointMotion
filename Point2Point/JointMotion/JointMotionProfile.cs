@@ -8,6 +8,10 @@ namespace Point2Point.JointMotion
 {
     public class JointMotionProfile
     {
+        private const double _defaultInitialVelocity = 0.0;
+
+        private readonly double _initialVelocity;
+
         public RampMotionParameter Parameters { get; }
         public ConstraintsCollection OriginalConstraints { get; }
         public ConstraintsCollection EffectiveConstraints { get; }
@@ -26,8 +30,14 @@ namespace Point2Point.JointMotion
         #region Constructors
 
         public JointMotionProfile(RampMotionParameter parameters, ConstraintsCollection constraints)
+            : this(parameters, _defaultInitialVelocity, constraints)
+        {
+        }
+
+        public JointMotionProfile(RampMotionParameter parameters, double initialVelocity, ConstraintsCollection constraints)
         {
             Parameters = parameters;
+            _initialVelocity = initialVelocity;
             OriginalConstraints = new ConstraintsCollection(constraints.Select(c => c.Copy()));
 
             EffectiveConstraints = constraints.GetEffectiveConstraints();
@@ -63,13 +73,23 @@ namespace Point2Point.JointMotion
             Timestamps = CalculateTimestampsAtConstraintOriginalDistances().ToList();
         }
 
+        public JointMotionProfile(RampMotionParameter parameters, double initialVelocity, IEnumerable<VelocityConstraint> constraints)
+            : this(parameters, initialVelocity, new ConstraintsCollection(constraints))
+        {
+        }
+
         public JointMotionProfile(RampMotionParameter parameters, IEnumerable<VelocityConstraint> constraints)
-            : this(parameters, new ConstraintsCollection(constraints))
+            : this(parameters, _defaultInitialVelocity, new ConstraintsCollection(constraints))
+        {
+        }
+
+        public JointMotionProfile(RampMotionParameter parameters, double initialVelocity, VelocityConstraint constraint, params VelocityConstraint[] constraints)
+            : this(parameters, initialVelocity, new List<VelocityConstraint>() { constraint }.Concat(constraints))
         {
         }
 
         public JointMotionProfile(RampMotionParameter parameters, VelocityConstraint constraint, params VelocityConstraint[] constraints)
-            : this(parameters, new List<VelocityConstraint>() { constraint }.Concat(constraints))
+            : this(parameters, _defaultInitialVelocity, new List<VelocityConstraint>() { constraint }.Concat(constraints))
         {
         }
 
@@ -142,7 +162,7 @@ namespace Point2Point.JointMotion
         {
             var velocityPoints = new List<VelocityPoint>()
             {
-                new VelocityPoint(0,0, null)
+                new VelocityPoint(0, _initialVelocity, null)
             };
 
             for (var i = 0; i < EffectiveConstraints.Count; i++)
