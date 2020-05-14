@@ -337,13 +337,13 @@ namespace Point2Point.UI
             {
                 Title = "VelocityProfile over time [s]"
             };
-
             plotModelVelocityProfile.Axes.Add(new LinearAxis()
             {
                 Position = AxisPosition.Left,
                 Minimum = 0,
                 AbsoluteMinimum = 0
             });
+
             var velocityProfileSerie = new LineSeries()
             {
                 Title = "Profile",
