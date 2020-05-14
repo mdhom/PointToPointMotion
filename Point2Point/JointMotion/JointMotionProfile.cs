@@ -9,8 +9,10 @@ namespace Point2Point.JointMotion
     public class JointMotionProfile
     {
         private const double _defaultInitialVelocity = 0.0;
+        private const double _defaultInitialAcceleration = 0.0;
 
         private readonly double _initialVelocity;
+        private readonly double _initialAcceleration;
 
         public RampMotionParameter Parameters { get; }
         public ConstraintsCollection OriginalConstraints { get; }
@@ -30,14 +32,17 @@ namespace Point2Point.JointMotion
         #region Constructors
 
         public JointMotionProfile(RampMotionParameter parameters, ConstraintsCollection constraints)
-            : this(parameters, _defaultInitialVelocity, constraints)
+            : this(parameters, _defaultInitialAcceleration, _defaultInitialVelocity, constraints)
         {
         }
 
-        public JointMotionProfile(RampMotionParameter parameters, double initialVelocity, ConstraintsCollection constraints)
+        public JointMotionProfile(RampMotionParameter parameters, double initialAcceleration, double initialVelocity, ConstraintsCollection constraints)
         {
             Parameters = parameters;
+
             _initialVelocity = initialVelocity;
+            _initialAcceleration = initialAcceleration;
+
             OriginalConstraints = new ConstraintsCollection(constraints.Select(c => c.Copy()));
 
             EffectiveConstraints = constraints.GetEffectiveConstraints();
@@ -73,23 +78,23 @@ namespace Point2Point.JointMotion
             Timestamps = CalculateTimestampsAtConstraintOriginalDistances().ToList();
         }
 
-        public JointMotionProfile(RampMotionParameter parameters, double initialVelocity, IEnumerable<VelocityConstraint> constraints)
-            : this(parameters, initialVelocity, new ConstraintsCollection(constraints))
+        public JointMotionProfile(RampMotionParameter parameters, double initialAcceleration, double initialVelocity, IEnumerable<VelocityConstraint> constraints)
+            : this(parameters, initialVelocity, initialAcceleration, new ConstraintsCollection(constraints))
         {
         }
 
         public JointMotionProfile(RampMotionParameter parameters, IEnumerable<VelocityConstraint> constraints)
-            : this(parameters, _defaultInitialVelocity, new ConstraintsCollection(constraints))
+            : this(parameters, _defaultInitialAcceleration, _defaultInitialVelocity, new ConstraintsCollection(constraints))
         {
         }
 
-        public JointMotionProfile(RampMotionParameter parameters, double initialVelocity, VelocityConstraint constraint, params VelocityConstraint[] constraints)
-            : this(parameters, initialVelocity, new List<VelocityConstraint>() { constraint }.Concat(constraints))
+        public JointMotionProfile(RampMotionParameter parameters, double initialAcceleration, double initialVelocity, VelocityConstraint constraint, params VelocityConstraint[] constraints)
+            : this(parameters, initialAcceleration, initialVelocity, new List<VelocityConstraint>() { constraint }.Concat(constraints))
         {
         }
 
         public JointMotionProfile(RampMotionParameter parameters, VelocityConstraint constraint, params VelocityConstraint[] constraints)
-            : this(parameters, _defaultInitialVelocity, new List<VelocityConstraint>() { constraint }.Concat(constraints))
+            : this(parameters, _defaultInitialAcceleration, _defaultInitialVelocity, new List<VelocityConstraint>() { constraint }.Concat(constraints))
         {
         }
 
@@ -162,7 +167,7 @@ namespace Point2Point.JointMotion
         {
             var velocityPoints = new List<VelocityPoint>()
             {
-                new VelocityPoint(0, _initialVelocity, null)
+                new VelocityPoint(0, _initialAcceleration, _initialVelocity, null)
             };
 
             for (var i = 0; i < EffectiveConstraints.Count; i++)
@@ -170,6 +175,7 @@ namespace Point2Point.JointMotion
                 var constraint = EffectiveConstraints[i];
                 var nextConstraint = EffectiveConstraints.ElementAtOrDefault(i + 1);
 
+                var a0 = i == 0 ? _initialAcceleration : 0.0;
                 var v0 = velocityPoints.Last().Velocity;
                 var v1 = constraint.MaximumVelocity;
                 var v2 = nextConstraint?.MaximumVelocity ?? 0.0;
@@ -180,7 +186,7 @@ namespace Point2Point.JointMotion
 
                 if (situation == 3)
                 {
-                    var distanceForAcc = RampCalculator.CalculateDistanceNeeded(v0, v1, Parameters);
+                    var distanceForAcc = RampCalculator.CalculateDistanceNeeded(a0, v0, v1, Parameters);
                     if (distanceForAcc < constraint.Length)
                     {
                         velocityPoints.Add(new VelocityPoint(startDistance + distanceForAcc, v1, constraint));
@@ -220,7 +226,7 @@ namespace Point2Point.JointMotion
                         return false;
                     }
                 }
-                else if (!IterativlyFindSteppedDownVelocity(v0, constraint, v2, startDistance, velocityPoints))
+                else if (!IterativlyFindSteppedDownVelocity(a0, v0, constraint, v2, startDistance, velocityPoints))
                 {
                     switch (situation)
                     {
@@ -253,7 +259,7 @@ namespace Point2Point.JointMotion
                 var pFrom = velocityPoints[i];
                 var pTo = velocityPoints[i + 1];
 
-                var ramp = new ExtendedRampCalculationResult(RampCalculator.Calculate(pFrom.Velocity, pTo.Velocity, Parameters), pFrom.Distance, timeSum);
+                var ramp = new ExtendedRampCalculationResult(RampCalculator.Calculate(pFrom.Acceleration, pFrom.Velocity, pTo.Velocity, Parameters), pFrom.Distance, timeSum);
                 var duration = ramp.Direction == RampDirection.Constant ? (pTo.Distance - pFrom.Distance) / pTo.Velocity : ramp.TotalDuration;
                 if (ramp.Direction == RampDirection.Constant)
                 {
@@ -553,7 +559,7 @@ namespace Point2Point.JointMotion
         /// <param name="startDistance">Absolute distance from the beginning of the profile until the start of the constraint</param>
         /// <param name="velocityPoints">List of previously added velocityPoints</param>
         /// <returns>True if stepped down velocity was found, otherwise false</returns>
-        private bool IterativlyFindSteppedDownVelocity(double v0, VelocityConstraint constraint, double v2, double startDistance, List<VelocityPoint> velocityPoints)
+        private bool IterativlyFindSteppedDownVelocity(double a0, double v0, VelocityConstraint constraint, double v2, double startDistance, List<VelocityPoint> velocityPoints)
         {
             const double stepDownSize = 5.0;
 
@@ -577,8 +583,8 @@ namespace Point2Point.JointMotion
 
             bool TryAddVelocityPoints(double v)
             {
-                var distanceForSDAcc = RampCalculator.CalculateDistanceNeeded(v0, v, Parameters);
-                var distanceForBrakingFromSD = RampCalculator.CalculateDistanceNeeded(v, v2, Parameters);
+                var distanceForSDAcc = RampCalculator.CalculateDistanceNeeded(a0, v0, v, Parameters);
+                var distanceForBrakingFromSD = RampCalculator.CalculateDistanceNeeded(0, v, v2, Parameters);
                 if (distanceForSDAcc + distanceForBrakingFromSD < constraint.Length)
                 {
                     // constant velocity will be reached

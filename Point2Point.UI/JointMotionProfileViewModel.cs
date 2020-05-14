@@ -97,6 +97,7 @@ namespace Point2Point.UI
         }
 
         public double InitialVelocity { get; set; }
+        public double InitialAcceleration { get; set; }
 
         private int _numRandomTestRuns;
         public int NumRandomTestRuns
@@ -229,7 +230,7 @@ namespace Point2Point.UI
                     maximumAcceleration: 500,
                     maximumDecceleration: -200);
 
-                var profile = new JointMotionProfile(parameters, InitialVelocity, constraintsCollection);
+                var profile = new JointMotionProfile(parameters, InitialAcceleration, InitialVelocity, constraintsCollection);
 
                 NumRecalculations = profile.NumRecalculations;
 

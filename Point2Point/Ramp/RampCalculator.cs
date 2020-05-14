@@ -30,8 +30,14 @@ namespace Shuttles.Base.Devices.Shuttles.Motion.Ramp
         public static double CalculateDistanceNeeded(double vFrom, double vTo, RampMotionParameter motionParameter)
             => Calculate(vFrom, vTo, motionParameter).Length;
 
+        public static double CalculateDistanceNeeded(double aFrom, double vFrom, double vTo, RampMotionParameter motionParameter)
+            => Calculate(aFrom, vFrom, vTo, motionParameter).Length;
+
         public static double CalculateTimeNeeded(double vFrom, double vTo, RampMotionParameter motionParameter)
             => Calculate(vFrom, vTo, motionParameter).TotalDuration;
+
+        public static double CalculateTimeNeeded(double aFrom, double vFrom, double vTo, RampMotionParameter motionParameter)
+            => Calculate(aFrom, vFrom, vTo, motionParameter).TotalDuration;
 
         public static bool IsReachable(double initialVelocity, double targetVelocity, double distanceAvailable, RampMotionParameter motionParameter)
             => Calculate(initialVelocity, targetVelocity, motionParameter).IsReachable(distanceAvailable);
@@ -74,18 +80,25 @@ namespace Shuttles.Base.Devices.Shuttles.Motion.Ramp
 
             void GetStatus1(double tIn, out double jOut, out double aOut, out double vOut, out double sOut)
             {
+                var tPhase = tIn;
+                var tPhase2 = tPhase * tPhase;
+                var tPhase3 = tPhase2 * tPhase;
+
                 jOut = jMax;
-                aOut = jMax * tIn;
-                vOut = v0 + 0.5 * jMax * tIn * tIn;
-                sOut = v0 * tIn + jMax / 6 * tIn * tIn * tIn;
+                aOut = jMax * tPhase + ramp.aFrom;
+                vOut = v0 + 0.5 * jMax * tPhase2 + ramp.aFrom * tPhase;
+                sOut = v0 * tPhase + jMax / 6 * tPhase3 + 0.5 * ramp.aFrom * tPhase2;
             }
 
             void GetStatus2(double tIn, double a1, double v1, double s1, out double jOut, out double aOut, out double vOut, out double sOut)
             {
+                var tPhase = tIn - t1;
+                var tPhase2 = tPhase * tPhase;
+
                 jOut = 0;
                 aOut = a1;
-                vOut = v1 + a1 * (tIn - t1);
-                sOut = s1 + v1 * (tIn - t1) + 0.5 * a1 * (tIn - t1) * (tIn - t1);
+                vOut = v1 + a1 * tPhase;
+                sOut = s1 + v1 * tPhase + 0.5 * a1 * tPhase2;
             }
 
             void GetStatus3(double tIn, double a2, double v2, double s2, out double jOut, out double aOut, out double vOut, out double sOut)
@@ -99,6 +112,36 @@ namespace Shuttles.Base.Devices.Shuttles.Motion.Ramp
                 vOut = v2 + a2 * tPhase + 0.5 * -jMax * tPhase2;
                 sOut = s2 + v2 * tPhase + 0.5 * a2 * tPhase2 + -jMax / 6 * tPhase3;
             }
+
+
+
+            //double v_current;
+            //if (t < t1)
+            //{
+            //    (_plotView.Model.Series[0] as LineSeries).Points.Add(new DataPoint(tTemp, jD)); //Jerk
+            //    (_plotView.Model.Series[1] as LineSeries).Points.Add(new DataPoint(tTemp, a0 + jD * t)); //Acceleration
+            //    v_current = v0 + a0 * t + 0.5 * jD * t * t;
+            //    (_plotView.Model.Series[2] as LineSeries).Points.Add(new DataPoint(tTemp, v_current)); //Velocity
+            //    (_plotView.Model.Series[3] as LineSeries).Points.Add(new DataPoint(tTemp, v0 * t + 0.5 * a0 * t * t + (1.0 / 6.0) * jD * t * t * t)); //Way
+            //}
+            //else if (t < t1 + t2)
+            //{
+            //    double tphase = t - t1;
+            //    (_plotView.Model.Series[0] as LineSeries).Points.Add(new DataPoint(tTemp, 0));
+            //    (_plotView.Model.Series[1] as LineSeries).Points.Add(new DataPoint(tTemp, a5));
+            //    v_current = v5 + a5 * tphase;
+            //    (_plotView.Model.Series[2] as LineSeries).Points.Add(new DataPoint(tTemp, v_current));
+            //    (_plotView.Model.Series[3] as LineSeries).Points.Add(new DataPoint(tTemp, s5 + v5 * tphase + 0.5 * a5 * tphase * tphase));
+            //}
+            //else
+            //{
+            //    double tphase = t - t1 - t2;
+            //    (_plotView.Model.Series[0] as LineSeries).Points.Add(new DataPoint(tTemp, jA));
+            //    (_plotView.Model.Series[1] as LineSeries).Points.Add(new DataPoint(tTemp, a6 + jA * tphase));
+            //    v_current = v6 + a6 * tphase + 0.5 * jA * tphase * tphase;
+            //    (_plotView.Model.Series[2] as LineSeries).Points.Add(new DataPoint(tTemp, v6 + a6 * tphase + 0.5 * jA * tphase * tphase));
+            //    (_plotView.Model.Series[3] as LineSeries).Points.Add(new DataPoint(tTemp, s6 + v6 * tphase + 0.5 * a6 * tphase * tphase + (1.0 / 6.0) * jA * tphase * tphase * tphase));
+            //}
         }
 
         /// <summary>
@@ -311,6 +354,7 @@ namespace Shuttles.Base.Devices.Shuttles.Motion.Ramp
             var result = new RampCalculationResult
             {
                 Parameters = MotionParameter,
+                aFrom = InitialAcceleration,
                 vFrom = InitialVelocity,
                 vTo = targetVelocity,
                 Direction = GetDirection(targetVelocity)

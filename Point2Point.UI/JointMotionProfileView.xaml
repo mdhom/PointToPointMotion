@@ -53,13 +53,15 @@
 
             <TextBlock Text="{Binding NumRecalculations, StringFormat='NumRecalculations: {0}'}" />
 
-            <TextBox Text="{Binding InitialVelocity}" Margin="20,0,0,0" HorizontalContentAlignment="Right" Width="100" />
+            <Label Content="Acc0:" Margin="20,0,0,0" />
+            <TextBox Text="{Binding InitialAcceleration}" Margin="5,0,0,0" HorizontalContentAlignment="Right" Width="100" />
+            
+            <Label Content="Vel0:" Margin="20,0,0,0" />
+            <TextBox Text="{Binding InitialVelocity}" Margin="5,0,0,0" HorizontalContentAlignment="Right" Width="100" />
         </StackPanel>
 
-        <oxy:PlotView Grid.Row="1" Model="{Binding PlotModel}">
-        </oxy:PlotView>
+        <oxy:PlotView Grid.Row="1" Model="{Binding PlotModel}"></oxy:PlotView>
 
-        <oxy:PlotView Grid.Row="2" Model="{Binding PlotModelVelocityProfile}">
-        </oxy:PlotView>
+        <oxy:PlotView Grid.Row="2" Model="{Binding PlotModelVelocityProfile}"></oxy:PlotView>
     </Grid>
 </UserControl>

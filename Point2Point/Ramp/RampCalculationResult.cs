@@ -5,6 +5,7 @@
         public RampMotionParameter Parameters { get; set; }
         public RampDirection Direction { get; set; }
 
+        public double aFrom { get; set; }
         public double vFrom { get; set; }
         public double vTo { get; set; }
 
@@ -29,6 +30,7 @@
         {
             Parameters = result.Parameters;
             Direction = result.Direction;
+            aFrom = result.aFrom;
             vFrom = result.vFrom;
             vTo = result.vTo;
             Phase1Duration = result.Phase1Duration;
