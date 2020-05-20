@@ -79,7 +79,7 @@ namespace Point2Point.JointMotion
         }
 
         public JointMotionProfile(RampMotionParameter parameters, double initialAcceleration, double initialVelocity, IEnumerable<VelocityConstraint> constraints)
-            : this(parameters, initialVelocity, initialAcceleration, new ConstraintsCollection(constraints))
+            : this(parameters, initialAcceleration, initialVelocity, new ConstraintsCollection(constraints))
         {
         }
 
@@ -109,7 +109,7 @@ namespace Point2Point.JointMotion
         /// <returns>Velocity [mm/s] at the given time</returns>
         public double GetV(double t)
         {
-            GetStatus(t, out var v, out _);
+            GetStatus(t, out _, out var v, out _);
             return v;
         }
 
@@ -120,7 +120,7 @@ namespace Point2Point.JointMotion
         /// <returns>Distance [mm] at the given time</returns>
         public double GetS(double t)
         {
-            GetStatus(t, out _, out var s);
+            GetStatus(t, out _, out _, out var s);
             return s;
         }
 
@@ -130,7 +130,7 @@ namespace Point2Point.JointMotion
         /// <param name="t">Time in seconds within the profile. Must be >= 0 and <= TotalDuration</param>
         /// <param name="v">Velocity [mm/s] at the given time</param>
         /// <param name="s">Distance [mm] at the given time</param>
-        public void GetStatus(double t, out double v, out double s)
+        public void GetStatus(double t, out double a, out double v, out double s)
         {
             t = Math.Min(t, TotalDuration);
 
@@ -151,11 +151,12 @@ namespace Point2Point.JointMotion
             {
                 v = pointFrom.Velocity;
                 s = tInRamp * v;
+                a = 0.0;
             }
             else
             {
                 var rampresult = RampResults.ElementAtOrDefault(pointFromIndex);
-                RampCalculator.CalculateStatus(rampresult, tInRamp, out _, out _, out v, out s);
+                RampCalculator.CalculateStatus(rampresult, tInRamp, out _, out a, out v, out s);
             }
 
             s += pointFrom.Distance;
