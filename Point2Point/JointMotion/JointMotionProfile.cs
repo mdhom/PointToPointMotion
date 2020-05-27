@@ -593,9 +593,8 @@ namespace Point2Point.JointMotion
 
             bool TryAddVelocityPoints(double v)
             {
-                var distanceForSDAcc = RampCalculator.CalculateDistanceNeeded(a0, v0, v, Parameters);
-
                 var a0ToUse = v2 < v0 && v == v0 ? a0 : 0;
+                var distanceForSDAcc = RampCalculator.CalculateDistanceNeeded(a0, v0, v, Parameters);
                 var distanceForBrakingFromSD = RampCalculator.CalculateDistanceNeeded(a0ToUse, v, v2, Parameters);
                 if (distanceForSDAcc + distanceForBrakingFromSD < constraint.Length)
                 {
