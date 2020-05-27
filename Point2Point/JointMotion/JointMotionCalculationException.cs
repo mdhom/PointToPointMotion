@@ -1,11 +1,14 @@
 ﻿using System;
 using System.Runtime.Serialization;
+using Shuttles.Base.Devices.Shuttles.Motion.Ramp;
 
 namespace Point2Point.JointMotion
 {
     [Serializable]
     public class JointMotionCalculationException : Exception
     {
+        public JointMotionProfileInputSet InputSet { get; }
+
         public JointMotionCalculationException()
         {
         }
@@ -13,6 +16,12 @@ namespace Point2Point.JointMotion
         public JointMotionCalculationException(string message)
             : base(message)
         {
+        }
+
+        public JointMotionCalculationException(string message, JointMotionProfileInputSet inputSet)
+            : base(message)
+        {
+            InputSet = inputSet;
         }
 
         public JointMotionCalculationException(string message, Exception innerException)

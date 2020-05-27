@@ -99,6 +99,12 @@ namespace Point2Point.UI
         public double InitialVelocity { get; set; }
         public double InitialAcceleration { get; set; }
 
+        public RampMotionParameter RampMotionParameter { get; set; } = new RampMotionParameter(
+positiveJerk: 2000,
+negativeJerk: -2000,
+maximumAcceleration: 500,
+maximumDecceleration: -200);
+
         private int _numRandomTestRuns;
         public int NumRandomTestRuns
         {
@@ -159,7 +165,8 @@ namespace Point2Point.UI
 
             LoadCommand = new RelayCommand(() =>
             {
-                LoadConstraintsCollection();
+                LoadInputSet();
+                //LoadConstraintsCollection();
             }, o => !RandomTestRunning);
 
             NavigateHistoryCommand = new RelayCommand<int>((d) =>
@@ -182,12 +189,32 @@ namespace Point2Point.UI
         {
             var dialog = new OpenFileDialog()
             {
+                Title = "Select ConstraintsCollection",
                 Filter = "JSON File|*.json"
             };
             if (dialog.ShowDialog().GetValueOrDefault(false))
             {
                 var jsonContent = File.ReadAllText(dialog.FileName);
                 _randomConstraints = JsonConvert.DeserializeObject<ConstraintsCollection>(jsonContent);
+                Update(_randomConstraints);
+            }
+        }
+
+        private void LoadInputSet()
+        {
+            var dialog = new OpenFileDialog()
+            {
+                Title = "Select InputSet",
+                Filter = "JSON File|*.json"
+            };
+            if (dialog.ShowDialog().GetValueOrDefault(false))
+            {
+                var jsonContent = File.ReadAllText(dialog.FileName);
+                var inputSet = JsonConvert.DeserializeObject<JointMotionProfileInputSet>(jsonContent);
+                _randomConstraints = inputSet.Constraints;
+                InitialAcceleration = inputSet.InitialAcceleration;
+                InitialVelocity = inputSet.InitialVelocity;
+                RampMotionParameter = inputSet.Parameters;
                 Update(_randomConstraints);
             }
         }
@@ -224,13 +251,7 @@ namespace Point2Point.UI
 
             try
             {
-                var parameters = new RampMotionParameter(
-                    positiveJerk: 2000,
-                    negativeJerk: -2000,
-                    maximumAcceleration: 500,
-                    maximumDecceleration: -200);
-
-                var profile = new JointMotionProfile(parameters, InitialAcceleration, InitialVelocity, constraintsCollection);
+                var profile = new JointMotionProfile(RampMotionParameter, InitialAcceleration, InitialVelocity, constraintsCollection);
 
                 NumRecalculations = profile.NumRecalculations;
 

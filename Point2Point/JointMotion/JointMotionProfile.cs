@@ -11,10 +11,12 @@ namespace Point2Point.JointMotion
         private const double _defaultInitialVelocity = 0.0;
         private const double _defaultInitialAcceleration = 0.0;
 
-        private readonly double _initialVelocity;
-        private readonly double _initialAcceleration;
 
-        public RampMotionParameter Parameters { get; }
+        public JointMotionProfileInputSet InputSet { get; }
+        public RampMotionParameter Parameters => InputSet.Parameters;
+        public double InitialVelocity => InputSet.InitialVelocity;
+        public double InitialAcceleration => InputSet.InitialAcceleration;
+
         public ConstraintsCollection OriginalConstraints { get; }
         public ConstraintsCollection EffectiveConstraints { get; }
         public int NumRecalculations { get; }
@@ -36,16 +38,13 @@ namespace Point2Point.JointMotion
         {
         }
 
-        public JointMotionProfile(RampMotionParameter parameters, double initialAcceleration, double initialVelocity, ConstraintsCollection constraints)
+        public JointMotionProfile(JointMotionProfileInputSet inputSet)
         {
-            Parameters = parameters;
+            InputSet = inputSet;
 
-            _initialVelocity = initialVelocity;
-            _initialAcceleration = initialAcceleration;
+            OriginalConstraints = new ConstraintsCollection(inputSet.Constraints.Select(c => c.Copy()));
 
-            OriginalConstraints = new ConstraintsCollection(constraints.Select(c => c.Copy()));
-
-            EffectiveConstraints = constraints.GetEffectiveConstraints();
+            EffectiveConstraints = inputSet.Constraints.GetEffectiveConstraints();
 
 #if DEBUG
             EffectiveConstraintsHistory = new List<ConstraintsCollection>
@@ -67,6 +66,11 @@ namespace Point2Point.JointMotion
                 {
                     // possibility to set brakepoint here
                     NumRecalculations++;
+
+                    if (EffectiveConstraints.Any(ec => ec.MaximumVelocity == 0))
+                    {
+                        throw new JointMotionCalculationException($"Invalid Effective Constraint", inputSet);
+                    }
                 }
             }
 #else
@@ -76,6 +80,11 @@ namespace Point2Point.JointMotion
 #endif
 
             Timestamps = CalculateTimestampsAtConstraintOriginalDistances().ToList();
+        }
+
+        public JointMotionProfile(RampMotionParameter parameters, double initialAcceleration, double initialVelocity, ConstraintsCollection constraints)
+            : this(new JointMotionProfileInputSet(parameters, initialAcceleration, initialVelocity, constraints))
+        {
         }
 
         public JointMotionProfile(RampMotionParameter parameters, double initialAcceleration, double initialVelocity, IEnumerable<VelocityConstraint> constraints)
@@ -168,7 +177,7 @@ namespace Point2Point.JointMotion
         {
             var velocityPoints = new List<VelocityPoint>()
             {
-                new VelocityPoint(0, _initialAcceleration, _initialVelocity, null)
+                new VelocityPoint(0, InitialAcceleration, InitialVelocity, null)
             };
 
             for (var i = 0; i < EffectiveConstraints.Count; i++)
@@ -176,7 +185,7 @@ namespace Point2Point.JointMotion
                 var constraint = EffectiveConstraints[i];
                 var nextConstraint = EffectiveConstraints.ElementAtOrDefault(i + 1);
 
-                var a0 = i == 0 ? _initialAcceleration : 0.0;
+                var a0 = i == 0 ? InitialAcceleration : 0.0;
                 var v0 = velocityPoints.Last().Velocity;
                 var v1 = constraint.MaximumVelocity;
                 var v2 = nextConstraint?.MaximumVelocity ?? 0.0;
@@ -272,12 +281,12 @@ namespace Point2Point.JointMotion
 
                 if (ramp.Direction != RampDirection.Constant && Math.Abs(ramp.Length - (pTo.Distance - pFrom.Distance)) > 1e-8)
                 {
-                    throw new JointMotionCalculationException($"Calculated distance differs from velocityPoints distance");
+                    throw new JointMotionCalculationException($"Calculated distance differs from velocityPoints distance", InputSet);
                 }
 
                 if (double.IsNaN(duration) || double.IsInfinity(duration))
                 {
-                    throw new JointMotionCalculationException($"Invalid duration ({duration}) on point {i} at {pFrom.Distance}");
+                    throw new JointMotionCalculationException($"Invalid duration ({duration}) on point {i} at {pFrom.Distance}", InputSet);
                 }
                 timeSum += duration;
                 times.Add(timeSum);
@@ -585,20 +594,27 @@ namespace Point2Point.JointMotion
             bool TryAddVelocityPoints(double v)
             {
                 var distanceForSDAcc = RampCalculator.CalculateDistanceNeeded(a0, v0, v, Parameters);
-                var distanceForBrakingFromSD = RampCalculator.CalculateDistanceNeeded(0, v, v2, Parameters);
+
+                var a0ToUse = v2 < v0 && v == v0 ? a0 : 0;
+                var distanceForBrakingFromSD = RampCalculator.CalculateDistanceNeeded(a0ToUse, v, v2, Parameters);
                 if (distanceForSDAcc + distanceForBrakingFromSD < constraint.Length)
                 {
                     // constant velocity will be reached
-                    velocityPoints.Add(new VelocityPoint(startDistance + distanceForSDAcc, v, constraint));
-                    velocityPoints.Add(new VelocityPoint(startDistance + (constraint.Length - distanceForBrakingFromSD), v, constraint));
-                    velocityPoints.Add(new VelocityPoint(startDistance + constraint.Length, v2, constraint));
+                    velocityPoints.Add(new VelocityPoint(startDistance + distanceForSDAcc, a0ToUse, v, constraint));
+                    velocityPoints.Add(new VelocityPoint(startDistance + (constraint.Length - distanceForBrakingFromSD), a0ToUse, v, constraint));
+                    velocityPoints.Add(new VelocityPoint(startDistance + constraint.Length, a0ToUse, v2, constraint));
                     return true;
                 }
                 else if (distanceForSDAcc + distanceForBrakingFromSD == constraint.Length)
                 {
                     // constant velocity will not be reached but maximum velocity => exact peak
-                    velocityPoints.Add(new VelocityPoint(startDistance + distanceForSDAcc, v, constraint));
-                    velocityPoints.Add(new VelocityPoint(startDistance + constraint.Length, v2, constraint));
+                    velocityPoints.Add(new VelocityPoint(startDistance + distanceForSDAcc, a0ToUse, v, constraint));
+                    velocityPoints.Add(new VelocityPoint(startDistance + constraint.Length, a0ToUse, v2, constraint));
+                    return true;
+                }
+                else if(v == v0 && Math.Abs(constraint.Length - distanceForBrakingFromSD) < 0.01)
+                {
+                    velocityPoints.Add(new VelocityPoint(startDistance + constraint.Length, a0ToUse, v2, constraint));
                     return true;
                 }
 
