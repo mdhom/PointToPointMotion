@@ -323,7 +323,14 @@ namespace Point2Point.JointMotion
                 {
                     timesSum += RampResults[rampIndex].TotalDuration;
                     rampIndex++;
+
+                    if (rampIndex > RampResults.Count - 1)
+                    {
+                        rampIndex--;
+                        break;
+                    }
                 }
+
                 if (RampResults[rampIndex].Direction == RampDirection.Constant)
                 {
                     yield return new DistanceTimestamp(distance, timesSum + (distance - RampResults[rampIndex].StartDistance) / RampResults[rampIndex].vFrom);
