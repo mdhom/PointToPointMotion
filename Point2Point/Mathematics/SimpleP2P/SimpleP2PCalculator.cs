@@ -1,14 +1,20 @@
 ﻿using System;
 
-namespace Point2Point
+namespace Point2Point.Mathematics.SimpleP2P
 {
+    /// <summary>
+    /// Implementation of the paper "Third order point-to-point motion-profile" by Mu Haihua
+    /// See Third-order-p2p-motion-profile.pdf
+    /// </summary>
 #pragma warning disable IDE1006 // Naming Styles
 #pragma warning disable IDE0059 // Unnecessary assignments
-    public class P2PCalculator
+    public class SimpleP2PCalculator
     {
-        public double JerkMax { get; }
-        public double AccelerationMax { get; }
-        public double VelocityMax { get; }
+        public SimpleP2PParameters Parameters { get; }
+
+        public double JerkMax => Parameters.JerkMax;
+        public double AccelerationMax => Parameters.AccelerationMax;
+        public double VelocityMax => Parameters.VelocityMax;
 
         public double t1 { get; }
         public double t2 { get; }
@@ -21,21 +27,19 @@ namespace Point2Point
 
         public double TotalTime => t7;
 
-        public P2PCalculator(double s, double jerkMax, double accelerationMax, double velocityMax)
+        public SimpleP2PCalculator(double s, SimpleP2PParameters parameters)
         {
-            JerkMax = jerkMax;
-            AccelerationMax = accelerationMax;
-            VelocityMax = velocityMax;
+            Parameters = parameters;
 
-            if (jerkMax < 0)
+            if (JerkMax < 0)
             {
                 throw new ArgumentOutOfRangeException($"Jerk must be positive");
             }
-            else if (accelerationMax < 0)
+            else if (AccelerationMax < 0)
             {
                 throw new ArgumentOutOfRangeException($"Acceleration must be positive");
             }
-            else if (velocityMax < 0)
+            else if (VelocityMax < 0)
             {
                 throw new ArgumentOutOfRangeException($"Velocity must be positive");
             }
@@ -51,6 +55,11 @@ namespace Point2Point
             t5 = tv + tj;
             t6 = tv + ta;
             t7 = tv + tj + ta;
+        }
+
+        public SimpleP2PCalculator(double s, double jerkMax, double accelerationMax, double velocityMax)
+            : this(s, new SimpleP2PParameters(jerkMax, accelerationMax, velocityMax))
+        {
         }
 
         public void GetStatus(double t, out double j, out double a, out double v, out double s)
@@ -103,14 +112,7 @@ namespace Point2Point
                                 {
                                     GetStatus6(t6, a5, v5, s5, out var j6, out var a6, out var v6, out var s6);
 
-                                    if (t <= t7)
-                                    {
-                                        GetStatus7(t, a6, v6, s6, out j, out a, out v, out s);
-                                    }
-                                    else
-                                    {
-                                        throw new ArgumentOutOfRangeException($"Given time t must be lower than t7 which is {t7:N2} at the moment");
-                                    }
+                                    GetStatus7(Math.Min(t, t7), a6, v6, s6, out j, out a, out v, out s);
                                 }
                             }
                         }
@@ -214,7 +216,7 @@ namespace Point2Point
                 s_v = VelocityMax * (VelocityMax / AccelerationMax + AccelerationMax / JerkMax);
             }
 
-            if (VelocityMax < v_a && s > s_a)
+            if (VelocityMax <= v_a && s > s_a)
             {
                 return 1;
             }
@@ -230,7 +232,7 @@ namespace Point2Point
             {
                 return 4;
             }
-            else if (VelocityMax > v_a && s > s_a && s > s_v)
+            else if (VelocityMax > v_a && s > s_a && s >= s_v)
             {
                 return 5;
             }
@@ -240,7 +242,7 @@ namespace Point2Point
             }
             else
             {
-                throw new InvalidOperationException("Undetected case");
+                return int.MinValue;
             }
         }
 
@@ -256,7 +258,7 @@ namespace Point2Point
                     return;
                 case 2:
                 case 4:
-                    tj = ThirdRoot(s / (2 * JerkMax));
+                    tj = MathematicTools.GetCubeRoot(s / (2 * JerkMax));
                     ta = tj;
                     tv = 2 * tj;
                     return;
@@ -273,11 +275,6 @@ namespace Point2Point
                 default:
                     throw new ArgumentOutOfRangeException($"TrajectoryInstance must be between 1 and 6");
             }
-        }
-
-        private static double ThirdRoot(double x)
-        {
-            return Math.Pow(x, 1.0 / 3.0);
         }
 
         public double GetTotalDistance()
