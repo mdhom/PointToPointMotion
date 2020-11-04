@@ -1,15 +1,15 @@
-﻿using Point2Point;
+﻿using Point2Point.Mathematics.SimpleP2P;
 
-namespace Shuttles.Base.Devices.Shuttles.Motion.Ramp
+namespace Point2Point.Mathematics.ExtendedP2P
 {
-    public struct RampMotionParameter
+    public struct MotionParameter
     {
         public double PositiveJerk { get; set; }
         public double NegativeJerk { get; set; }
         public double MaximumAcceleration { get; set; }
         public double MaximumDecceleration { get; set; }
 
-        public RampMotionParameter(double positiveJerk, double negativeJerk, double maximumAcceleration, double maximumDecceleration)
+        public MotionParameter(double positiveJerk, double negativeJerk, double maximumAcceleration, double maximumDecceleration)
         {
             PositiveJerk = positiveJerk;
             NegativeJerk = negativeJerk;
@@ -17,7 +17,7 @@ namespace Shuttles.Base.Devices.Shuttles.Motion.Ramp
             MaximumDecceleration = maximumDecceleration;
         }
 
-        public RampMotionParameter(P2PParameters parameters)
+        public MotionParameter(SimpleP2PParameters parameters)
         {
             PositiveJerk = parameters.JerkMax;
             NegativeJerk = -parameters.JerkMax;

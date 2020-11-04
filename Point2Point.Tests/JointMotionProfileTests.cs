@@ -1,13 +1,13 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Point2Point.JointMotion;
-using Shuttles.Base.Devices.Shuttles.Motion.Ramp;
+using Point2Point.Mathematics.ExtendedP2P;
 
 namespace Point2Point.Tests
 {
     [TestClass]
     public class JointMotionProfileTests
     {
-        private RampMotionParameter _parameters = new RampMotionParameter(2000, -2000, 1000, -1000);
+        private MotionParameter _parameters = new MotionParameter(2000, -2000, 1000, -1000);
 
         [TestMethod]
         public void StartAndEndStatusAreCorrect()

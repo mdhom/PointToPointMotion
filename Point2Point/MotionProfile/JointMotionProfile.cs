@@ -1,19 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Point2Point.Mathematics.ExtendedP2P;
 using Servus.Core;
-using Shuttles.Base.Devices.Shuttles.Motion.Ramp;
 
 namespace Point2Point.JointMotion
 {
-    public class JointMotionProfile
+    public class JointMotionProfile : IMotionProfile
     {
         private const double _defaultInitialVelocity = 0.0;
         private const double _defaultInitialAcceleration = 0.0;
 
-
         public JointMotionProfileInputSet InputSet { get; }
-        public RampMotionParameter Parameters => InputSet.Parameters;
+        public MotionParameter Parameters => InputSet.Parameters;
         public double InitialVelocity => InputSet.InitialVelocity;
         public double InitialAcceleration => InputSet.InitialAcceleration;
 
@@ -33,7 +32,7 @@ namespace Point2Point.JointMotion
 
         #region Constructors
 
-        public JointMotionProfile(RampMotionParameter parameters, ConstraintsCollection constraints)
+        public JointMotionProfile(MotionParameter parameters, ConstraintsCollection constraints)
             : this(parameters, _defaultInitialAcceleration, _defaultInitialVelocity, constraints)
         {
         }
@@ -82,27 +81,27 @@ namespace Point2Point.JointMotion
             Timestamps = CalculateTimestampsAtConstraintOriginalDistances().ToList();
         }
 
-        public JointMotionProfile(RampMotionParameter parameters, double initialAcceleration, double initialVelocity, ConstraintsCollection constraints)
+        public JointMotionProfile(MotionParameter parameters, double initialAcceleration, double initialVelocity, ConstraintsCollection constraints)
             : this(new JointMotionProfileInputSet(parameters, initialAcceleration, initialVelocity, constraints))
         {
         }
 
-        public JointMotionProfile(RampMotionParameter parameters, double initialAcceleration, double initialVelocity, IEnumerable<VelocityConstraint> constraints)
+        public JointMotionProfile(MotionParameter parameters, double initialAcceleration, double initialVelocity, IEnumerable<VelocityConstraint> constraints)
             : this(parameters, initialAcceleration, initialVelocity, new ConstraintsCollection(constraints))
         {
         }
 
-        public JointMotionProfile(RampMotionParameter parameters, IEnumerable<VelocityConstraint> constraints)
+        public JointMotionProfile(MotionParameter parameters, IEnumerable<VelocityConstraint> constraints)
             : this(parameters, _defaultInitialAcceleration, _defaultInitialVelocity, new ConstraintsCollection(constraints))
         {
         }
 
-        public JointMotionProfile(RampMotionParameter parameters, double initialAcceleration, double initialVelocity, VelocityConstraint constraint, params VelocityConstraint[] constraints)
+        public JointMotionProfile(MotionParameter parameters, double initialAcceleration, double initialVelocity, VelocityConstraint constraint, params VelocityConstraint[] constraints)
             : this(parameters, initialAcceleration, initialVelocity, new List<VelocityConstraint>() { constraint }.Concat(constraints))
         {
         }
 
-        public JointMotionProfile(RampMotionParameter parameters, VelocityConstraint constraint, params VelocityConstraint[] constraints)
+        public JointMotionProfile(MotionParameter parameters, VelocityConstraint constraint, params VelocityConstraint[] constraints)
             : this(parameters, _defaultInitialAcceleration, _defaultInitialVelocity, new List<VelocityConstraint>() { constraint }.Concat(constraints))
         {
         }
@@ -165,7 +164,7 @@ namespace Point2Point.JointMotion
             else
             {
                 var rampresult = RampResults.ElementAtOrDefault(pointFromIndex);
-                RampCalculator.CalculateStatus(rampresult, tInRamp, out _, out a, out v, out s);
+                ExtendedP2PCalculator.CalculateStatus(rampresult, tInRamp, out _, out a, out v, out s);
             }
 
             s += pointFrom.Distance;
@@ -196,7 +195,7 @@ namespace Point2Point.JointMotion
 
                 if (situation == 3)
                 {
-                    var distanceForAcc = RampCalculator.CalculateDistanceNeeded(a0, v0, v1, Parameters);
+                    var distanceForAcc = ExtendedP2PCalculator.CalculateDistanceNeeded(a0, v0, v1, Parameters);
                     if (distanceForAcc < constraint.Length)
                     {
                         velocityPoints.Add(new VelocityPoint(startDistance + distanceForAcc, v1, constraint));
@@ -221,7 +220,7 @@ namespace Point2Point.JointMotion
                 }
                 else if (situation == 8)
                 {
-                    var brakeDistance = RampCalculator.CalculateDistanceNeeded(v1, v2, Parameters);
+                    var brakeDistance = ExtendedP2PCalculator.CalculateDistanceNeeded(v1, v2, Parameters);
                     if (brakeDistance <= constraint.Length)
                     {
                         velocityPoints.Add(new VelocityPoint(startDistance + (constraint.Length - brakeDistance), v1, constraint));
@@ -269,7 +268,7 @@ namespace Point2Point.JointMotion
                 var pFrom = velocityPoints[i];
                 var pTo = velocityPoints[i + 1];
 
-                var ramp = new ExtendedRampCalculationResult(RampCalculator.Calculate(pFrom.Acceleration, pFrom.Velocity, pTo.Velocity, Parameters), pFrom.Distance, timeSum);
+                var ramp = new ExtendedRampCalculationResult(ExtendedP2PCalculator.Calculate(pFrom.Acceleration, pFrom.Velocity, pTo.Velocity, Parameters), pFrom.Distance, timeSum);
                 var duration = ramp.Direction == RampDirection.Constant ? (pTo.Distance - pFrom.Distance) / pTo.Velocity : ramp.TotalDuration;
                 if (ramp.Direction == RampDirection.Constant)
                 {
@@ -337,7 +336,7 @@ namespace Point2Point.JointMotion
                 }
                 else
                 {
-                    var t = RampCalculator.GetTimeAt(RampResults[rampIndex], distance - RampResults[rampIndex].StartDistance);
+                    var t = ExtendedP2PCalculator.GetTimeAt(RampResults[rampIndex], distance - RampResults[rampIndex].StartDistance);
                     yield return new DistanceTimestamp(distance, timesSum + t);
                 }
             }
@@ -377,11 +376,11 @@ namespace Point2Point.JointMotion
 
                 if (v1 > v0 && v1 > v2)
                 {
-                    var distanceAcc = RampCalculator.CalculateDistanceNeeded(v0, v1, Parameters);
-                    var distanceDec = RampCalculator.CalculateDistanceNeeded(v1, v2, Parameters);
+                    var distanceAcc = ExtendedP2PCalculator.CalculateDistanceNeeded(v0, v1, Parameters);
+                    var distanceDec = ExtendedP2PCalculator.CalculateDistanceNeeded(v1, v2, Parameters);
                     if (distanceAcc + distanceDec > constraint.Length)
                     {
-                        var distanceAccToV2 = RampCalculator.CalculateDistanceNeeded(v0, v2, Parameters);
+                        var distanceAccToV2 = ExtendedP2PCalculator.CalculateDistanceNeeded(v0, v2, Parameters);
                         if (distanceAccToV2 < constraint.Length)
                         {
                             highTightGaps.Add(new Gap(constraint, v0, v1, v2, Gap.ActionType.DoNothing));
@@ -601,8 +600,8 @@ namespace Point2Point.JointMotion
             bool TryAddVelocityPoints(double v)
             {
                 var a0ToUse = v2 < v0 && v == v0 ? a0 : 0;
-                var distanceForSDAcc = RampCalculator.CalculateDistanceNeeded(a0, v0, v, Parameters);
-                var distanceForBrakingFromSD = RampCalculator.CalculateDistanceNeeded(a0ToUse, v, v2, Parameters);
+                var distanceForSDAcc = ExtendedP2PCalculator.CalculateDistanceNeeded(a0, v0, v, Parameters);
+                var distanceForBrakingFromSD = ExtendedP2PCalculator.CalculateDistanceNeeded(a0ToUse, v, v2, Parameters);
                 if (distanceForSDAcc + distanceForBrakingFromSD < constraint.Length)
                 {
                     // constant velocity will be reached

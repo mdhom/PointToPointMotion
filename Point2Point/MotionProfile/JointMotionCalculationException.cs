@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Runtime.Serialization;
-using Shuttles.Base.Devices.Shuttles.Motion.Ramp;
 
 namespace Point2Point.JointMotion
 {

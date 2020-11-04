@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using OxyPlot;
+using Point2Point.Mathematics.SimpleP2P;
 using Servus.Core;
 
 namespace Point2Point.UI
@@ -77,7 +78,7 @@ namespace Point2Point.UI
 
             try
             {
-                var calc = new P2PCalculator(TargetDistance, JerkMax, AccelerationMax, VelocityMax);
+                var calc = new SimpleP2PCalculator(TargetDistance, JerkMax, AccelerationMax, VelocityMax);
 
                 for (double t = 0; t <= calc.t7; t += 0.001)
                 {

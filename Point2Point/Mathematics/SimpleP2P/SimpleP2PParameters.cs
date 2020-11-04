@@ -1,12 +1,12 @@
-﻿namespace Point2Point
+﻿namespace Point2Point.Mathematics.SimpleP2P
 {
-    public class P2PParameters
+    public class SimpleP2PParameters
     {
         public double JerkMax { get; }
         public double AccelerationMax { get; }
         public double VelocityMax { get; }
 
-        public P2PParameters(double jerkMax, double accelerationMax, double velocityMax)
+        public SimpleP2PParameters(double jerkMax, double accelerationMax, double velocityMax)
         {
             JerkMax = jerkMax;
             AccelerationMax = accelerationMax;

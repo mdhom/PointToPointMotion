@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Point2Point
+namespace Point2Point.Mathematics.SimpleP2P
 {
     /// <summary>
     /// Implementation of the paper "Third order point-to-point motion-profile" by Mu Haihua
@@ -8,9 +8,9 @@ namespace Point2Point
     /// </summary>
 #pragma warning disable IDE1006 // Naming Styles
 #pragma warning disable IDE0059 // Unnecessary assignments
-    public class P2PCalculator
+    public class SimpleP2PCalculator
     {
-        public P2PParameters Parameters { get; }
+        public SimpleP2PParameters Parameters { get; }
 
         public double JerkMax => Parameters.JerkMax;
         public double AccelerationMax => Parameters.AccelerationMax;
@@ -27,7 +27,7 @@ namespace Point2Point
 
         public double TotalTime => t7;
 
-        public P2PCalculator(double s, P2PParameters parameters)
+        public SimpleP2PCalculator(double s, SimpleP2PParameters parameters)
         {
             Parameters = parameters;
 
@@ -57,8 +57,8 @@ namespace Point2Point
             t7 = tv + tj + ta;
         }
 
-        public P2PCalculator(double s, double jerkMax, double accelerationMax, double velocityMax)
-            : this(s, new P2PParameters(jerkMax, accelerationMax, velocityMax))
+        public SimpleP2PCalculator(double s, double jerkMax, double accelerationMax, double velocityMax)
+            : this(s, new SimpleP2PParameters(jerkMax, accelerationMax, velocityMax))
         {
         }
 

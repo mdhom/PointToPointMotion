@@ -1,8 +1,8 @@
-﻿namespace Shuttles.Base.Devices.Shuttles.Motion.Ramp
+﻿namespace Point2Point.Mathematics.ExtendedP2P
 {
-    public class RampCalculationResult
+    public class ExtendedP2PCalculatorResult
     {
-        public RampMotionParameter Parameters { get; set; }
+        public MotionParameter Parameters { get; set; }
         public RampDirection Direction { get; set; }
 
         public double aFrom { get; set; }
@@ -22,11 +22,11 @@
         public bool IsReachable(double availableDistance)
             => Length <= availableDistance;
 
-        public RampCalculationResult()
+        public ExtendedP2PCalculatorResult()
         {
         }
 
-        public RampCalculationResult(RampCalculationResult result)
+        public ExtendedP2PCalculatorResult(ExtendedP2PCalculatorResult result)
         {
             Parameters = result.Parameters;
             Direction = result.Direction;

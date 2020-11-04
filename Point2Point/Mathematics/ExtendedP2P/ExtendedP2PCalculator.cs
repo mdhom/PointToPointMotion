@@ -1,48 +1,47 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Numerics;
-using Point2Point;
 using Point2Point.JointMotion;
 
-namespace Shuttles.Base.Devices.Shuttles.Motion.Ramp
+namespace Point2Point.Mathematics.ExtendedP2P
 {
-    internal class RampCalculator
+    internal class ExtendedP2PCalculator
     {
         public double InitialAcceleration { get; }
         public double InitialVelocity { get; }
-        public RampMotionParameter MotionParameter { get; }
+        public MotionParameter MotionParameter { get; }
 
         public bool Inverted { get; private set; }
 
-        private RampCalculator(double initialAcceleration, double initialVelocity, RampMotionParameter motionParameter)
+        private ExtendedP2PCalculator(double initialAcceleration, double initialVelocity, MotionParameter motionParameter)
         {
             InitialAcceleration = initialAcceleration;
             InitialVelocity = initialVelocity;
             MotionParameter = motionParameter;
         }
 
-        public static RampCalculationResult Calculate(double initialAcceleration, double initialVelocity, double targetVelocity, RampMotionParameter motionParameter)
-            => new RampCalculator(initialAcceleration, initialVelocity, motionParameter).Calculate(targetVelocity);
+        public static ExtendedP2PCalculatorResult Calculate(double initialAcceleration, double initialVelocity, double targetVelocity, MotionParameter motionParameter)
+            => new ExtendedP2PCalculator(initialAcceleration, initialVelocity, motionParameter).Calculate(targetVelocity);
 
-        public static RampCalculationResult Calculate(double initialVelocity, double targetVelocity, RampMotionParameter motionParameter)
+        public static ExtendedP2PCalculatorResult Calculate(double initialVelocity, double targetVelocity, MotionParameter motionParameter)
             => Calculate(0, initialVelocity, targetVelocity, motionParameter);
 
-        public static double CalculateDistanceNeeded(double vFrom, double vTo, RampMotionParameter motionParameter)
+        public static double CalculateDistanceNeeded(double vFrom, double vTo, MotionParameter motionParameter)
             => Calculate(vFrom, vTo, motionParameter).Length;
 
-        public static double CalculateDistanceNeeded(double aFrom, double vFrom, double vTo, RampMotionParameter motionParameter)
+        public static double CalculateDistanceNeeded(double aFrom, double vFrom, double vTo, MotionParameter motionParameter)
             => Calculate(aFrom, vFrom, vTo, motionParameter).Length;
 
-        public static double CalculateTimeNeeded(double vFrom, double vTo, RampMotionParameter motionParameter)
+        public static double CalculateTimeNeeded(double vFrom, double vTo, MotionParameter motionParameter)
             => Calculate(vFrom, vTo, motionParameter).TotalDuration;
 
-        public static double CalculateTimeNeeded(double aFrom, double vFrom, double vTo, RampMotionParameter motionParameter)
+        public static double CalculateTimeNeeded(double aFrom, double vFrom, double vTo, MotionParameter motionParameter)
             => Calculate(aFrom, vFrom, vTo, motionParameter).TotalDuration;
 
-        public static bool IsReachable(double initialVelocity, double targetVelocity, double distanceAvailable, RampMotionParameter motionParameter)
+        public static bool IsReachable(double initialVelocity, double targetVelocity, double distanceAvailable, MotionParameter motionParameter)
             => Calculate(initialVelocity, targetVelocity, motionParameter).IsReachable(distanceAvailable);
 
-        public static void CalculateStatus(RampCalculationResult ramp, double t, out double j, out double a, out double v, out double s)
+        public static void CalculateStatus(ExtendedP2PCalculatorResult ramp, double t, out double j, out double a, out double v, out double s)
         {
             var t1 = ramp.Phase1Duration;
             var t2 = t1 + ramp.Phase2Duration;
@@ -179,7 +178,7 @@ namespace Shuttles.Base.Devices.Shuttles.Motion.Ramp
                 return cubicResult;
             }
             else
-            { 
+            {
                 // calculate state at end of phase 1
                 var t1 = ramp.Phase1Duration;
                 var a1 = j1 * t1;
@@ -265,11 +264,11 @@ namespace Shuttles.Base.Devices.Shuttles.Motion.Ramp
                 {
                     // ERROR!
                 }
-                var h3 = (1.0 / 3) * Math.Acos(h2);
+                var h3 = 1.0 / 3 * Math.Acos(h2);
                 var h4 = B / (3 * A);
                 if (diskriminante < 0)
                 {
-                    var x2 = -h1 * Math.Cos(h3 + (Math.PI / 3)) - h4;
+                    var x2 = -h1 * Math.Cos(h3 + Math.PI / 3) - h4;
                     var x1 = h1 * Math.Cos(h3) - h4;
                     var x3 = -h1 * Math.Cos(h3 - Math.PI / 3) - h4;
 
@@ -324,7 +323,7 @@ namespace Shuttles.Base.Devices.Shuttles.Motion.Ramp
                         v = -MathematicTools.GetCubeRoot(-v);
                     }
 
-                    d1Mats = u + v - (B / (3 * A));
+                    d1Mats = u + v - B / (3 * A);
                 }
             }
 
@@ -349,9 +348,9 @@ namespace Shuttles.Base.Devices.Shuttles.Motion.Ramp
             }
         }
 
-        private RampCalculationResult Calculate(double targetVelocity)
+        private ExtendedP2PCalculatorResult Calculate(double targetVelocity)
         {
-            var result = new RampCalculationResult
+            var result = new ExtendedP2PCalculatorResult
             {
                 Parameters = MotionParameter,
                 aFrom = InitialAcceleration,

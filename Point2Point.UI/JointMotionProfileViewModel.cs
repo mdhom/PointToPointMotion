@@ -12,9 +12,9 @@ using OxyPlot.Annotations;
 using OxyPlot.Axes;
 using OxyPlot.Series;
 using Point2Point.JointMotion;
+using Point2Point.Mathematics.ExtendedP2P;
 using Servus.Core;
 using Servus.Core.Ui;
-using Shuttles.Base.Devices.Shuttles.Motion.Ramp;
 
 namespace Point2Point.UI
 {
@@ -99,7 +99,7 @@ namespace Point2Point.UI
         public double InitialVelocity { get; set; }
         public double InitialAcceleration { get; set; }
 
-        public RampMotionParameter RampMotionParameter { get; set; } = new RampMotionParameter(
+        public MotionParameter RampMotionParameter { get; set; } = new MotionParameter(
 positiveJerk: 2000,
 negativeJerk: -2000,
 maximumAcceleration: 500,

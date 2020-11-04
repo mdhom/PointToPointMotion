@@ -1,4 +1,4 @@
-﻿namespace Shuttles.Base.Devices.Shuttles.Motion.Ramp
+﻿namespace Point2Point.Mathematics.ExtendedP2P
 {
     public enum RampDirection
     {
