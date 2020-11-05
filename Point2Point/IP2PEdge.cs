@@ -9,8 +9,9 @@ namespace Point2Point
     {
         int Id { get; }
 
-        IP2PNode StartNode { get; set; }
-        IP2PNode EndNode { get; set; }
+        IP2PNode StartNode { get; }
+        IP2PNode EndNode { get;  }
+        float MaximumVelocity { get; }
 
         float Length();
 

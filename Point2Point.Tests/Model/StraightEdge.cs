@@ -12,6 +12,7 @@ namespace Point2Point.Tests.Model
         public IP2PNode StartNode { get; set; }
         public IP2PNode EndNode { get; set; }
 
+        public float MaximumVelocity { get; set; }
         public Vector3 GetLocation(float distanceOnPath)
         {
             var straightVector = EndNode.Location - StartNode.Location;
@@ -22,6 +23,7 @@ namespace Point2Point.Tests.Model
 
         public Vector3 GetEndDirection() => Vector3.Normalize(EndNode.Location - StartNode.Location);
         public Vector3 GetStartDirection() => GetEndDirection();
+
 
         public float Length()
         {
