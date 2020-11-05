@@ -20,8 +20,7 @@ namespace Point2Point.ClearanceHandling
         private JointMotionProfile _jointMotionProfile;
         private double _jointMotionProfileCreatedTime;
         private double _jointMotionProfileCreatedDistance;
-
-        public TimeSpan TotalDuration => TimeSpan.FromSeconds(_jointMotionProfile.TotalDuration);
+        public TimeSpan TotalDuration => TimeSpan.FromSeconds(_jointMotionProfile?.TotalDuration ?? 0);
         public double ClearedLength { get; private set; }
         public TimeSpan Created { get; }
 
