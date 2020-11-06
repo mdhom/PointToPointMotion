@@ -96,5 +96,15 @@ namespace Point2Point
 
         public static Vector3 Abs(this Vector3 vector)
             => new Vector3(Math.Abs(vector.X), Math.Abs(vector.Y), Math.Abs(vector.Z));
+
+        /// <summary>
+        /// Method converts an angle to heading vector
+        /// </summary>
+        /// <param name="angle">Input angle in rad [-Pi to Pi]</param>
+        /// <returns>heading vector</returns>
+        public static Vector3 GetVector3FromAngle(double angle)
+        {
+            return new Vector3((float) Math.Cos(angle), (float) Math.Sin(angle), 0);
+        }
     }
 }
