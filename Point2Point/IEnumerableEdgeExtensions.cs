@@ -46,8 +46,8 @@ namespace Point2Point
         public static IPose GetCurrentPose(this IEnumerable<IP2PDirectedEdge> edges, float distance)
         {
             (var edge, var distanceOnEdge) = edges.GetCurrentEdge(distance);
-            //TODO calculate rotation based on rotationrule on this edge at distanceOnEdge
-            return new Pose(edge.GetLocation(distanceOnEdge)); //TODO add calculated rotation here
+            var rotation = edge.GetRotation(distanceOnEdge);
+            return new Pose(edge.GetLocation(distanceOnEdge), rotation); 
         }
     }
 }

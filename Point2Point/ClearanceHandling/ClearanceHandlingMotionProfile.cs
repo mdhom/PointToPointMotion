@@ -5,7 +5,6 @@ using Point2Point.Mathematics.ExtendedP2P;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
 namespace Point2Point.ClearanceHandling
 {
@@ -47,7 +46,7 @@ namespace Point2Point.ClearanceHandling
                     if (constraints.Count == 0)
                     {
                         var newConstraintLength = length - (distance - distanceSum);
-                        constraints.Add(new EdgeVelocityConstraint(edge.Edge, 0.0, newConstraintLength, _vMax)); //TODO get maximum allowed velocity on this edge
+                        constraints.Add(new EdgeVelocityConstraint(edge.Edge, 0.0, newConstraintLength, Math.Min(edge.Edge.MaximumVelocity,_vMax))); //TODO get maximum allowed velocity on this edge
                         break;
                     }
                 }
@@ -62,7 +61,7 @@ namespace Point2Point.ClearanceHandling
 
             foreach (var edge in _edges.Skip(numSkipped + 1))
             {
-                constraints.Add(new EdgeVelocityConstraint(edge.Edge, constraints.Last().End, _vMax)); //TODO get maximum allowed velocity on this edge
+                constraints.Add(new EdgeVelocityConstraint(edge.Edge, constraints.Last().End, Math.Min(edge.Edge.MaximumVelocity,_vMax))); //TODO get maximum allowed velocity on this edge
             }
 
             return constraints;

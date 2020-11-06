@@ -7,8 +7,8 @@ namespace Point2Point.PoseCalculation
 {
     public class Pose : IPose
     {
-        public Vector3 Location { get; set; }
-        public Vector3 Rotation { get; set; }
+        public Vector3 Location { get; }
+        public Vector3 Rotation { get; }
 
         public Pose(Vector3 location, Vector3 rotation)
         {

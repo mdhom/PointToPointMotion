@@ -31,5 +31,10 @@ namespace Point2Point.Tests
         {
             throw new NotImplementedException();
         }
+
+        public Vector3 GetRotation(float distanceOnPath)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

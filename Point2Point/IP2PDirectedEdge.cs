@@ -20,5 +20,6 @@ namespace Point2Point
         float Length() => Edge.Length();
 
         Vector3 GetLocation(float distanceOnPath);
+        Vector3 GetRotation(float distanceOnPath);
     }
 }
