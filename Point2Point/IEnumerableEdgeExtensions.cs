@@ -26,9 +26,9 @@ namespace Point2Point
             });
         }
 
-        public static (IP2PDirectedEdge edge, float distanceOnEdge) GetCurrentEdge(this IEnumerable<IP2PDirectedEdge> edges, float distance)
+        public static (IP2PDirectedEdge edge, double distanceOnEdge) GetCurrentEdge(this IEnumerable<IP2PDirectedEdge> edges, float distance)
         {
-            var sumDistances = 0f;
+            var sumDistances = 0d;
             foreach (var edge in edges)
             {
                 var length = edge.Length();

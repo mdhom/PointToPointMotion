@@ -7,8 +7,7 @@ namespace Point2Point.Tests
 {
     internal class DirectedEdge : IP2PDirectedEdge
     {
-        public int Id => Edge.Id;
-
+        public int Id => Edge.Id; 
         public IP2PEdge Edge { get; }
         public DriveDirection Direction { get; }
 
@@ -27,12 +26,12 @@ namespace Point2Point.Tests
             Direction = nodeFromId == Edge.StartNode.Id ? DriveDirection.Forward : DriveDirection.Backward;
         }
 
-        public Vector3 GetLocation(float distanceOnPath)
+        public Vector3 GetLocation(double distanceOnPath)
         {
             throw new NotImplementedException();
         }
 
-        public Vector3 GetRotation(float distanceOnPath)
+        public Vector3 GetRotation(double distanceOnPath)
         {
             throw new NotImplementedException();
         }

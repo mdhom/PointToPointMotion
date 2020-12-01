@@ -103,7 +103,7 @@ namespace Point2Point.UI
 positiveJerk: 2000,
 negativeJerk: -2000,
 maximumAcceleration: 500,
-maximumDecceleration: -200);
+maximumDecceleration: -500);
 
         private int _numRandomTestRuns;
         public int NumRandomTestRuns
@@ -130,9 +130,10 @@ maximumDecceleration: -200);
             Directory.CreateDirectory(_logFolder);
 
             _randomConstraints = new ConstraintsCollection(
-                new VelocityConstraint(0, 1000, 500),
-                new VelocityConstraint(1000, 1000, 400),
-                new VelocityConstraint(500, 1000, 200));
+                new VelocityConstraint(0, 1000, 400));
+                // new VelocityConstraint(1000, 500, 400),
+                // new VelocityConstraint(1500, 500, 400),
+                // new VelocityConstraint(2000, 1000, 200));
 
             Update(_randomConstraints);
 

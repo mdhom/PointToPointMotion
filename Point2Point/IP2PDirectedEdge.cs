@@ -17,9 +17,9 @@ namespace Point2Point
         Vector3 StartDirection => Direction == DriveDirection.Forward ? Edge.GetStartDirection() : Edge.GetEndDirection();
         Vector3 EndDirection => Direction == DriveDirection.Forward ? Edge.GetEndDirection() : Edge.GetStartDirection();
 
-        float Length() => Edge.Length();
+        double Length() => Edge.Length();
 
-        Vector3 GetLocation(float distanceOnPath);
-        Vector3 GetRotation(float distanceOnPath);
+        Vector3 GetLocation(double distanceOnPath);
+        Vector3 GetRotation(double distanceOnPath);
     }
 }
