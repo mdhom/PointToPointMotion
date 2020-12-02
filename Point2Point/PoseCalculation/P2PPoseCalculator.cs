@@ -26,7 +26,7 @@ namespace Point2Point.PoseCalculation
             Created = created;
             _motionProfile = motionProfile;
             DirectedEdges = directedEdges.ToList();
-            Edges = directedEdges.Select(e => e.Edge).ToList();
+            Edges = DirectedEdges.Select(e => e.Edge).ToList();
             _timeSpan = new TimeSpan(0);
         }
 
@@ -39,19 +39,11 @@ namespace Point2Point.PoseCalculation
         {
             var t = (time - Created).TotalSeconds;
             _motionProfile.GetStatus(t, out acceleration, out velocity, out distance, out currentNode, out currentEdgeIndex);
-            var pose = DirectedEdges.GetCurrentPose((float)distance);
+            var pose = DirectedEdges.GetCurrentPose(distance);
 
             return pose;
         }
         
-        public IPose GetPoseDeltaT(TimeSpan deltaT, out double acceleration, out double velocity, out double distance, out IP2PNode currentNode, out int currentEdgeIndex)
-        {
-            _timeSpan += deltaT; 
-            _motionProfile.GetStatus(_timeSpan.TotalSeconds, out acceleration, out velocity, out distance, out currentNode, out currentEdgeIndex);
-            var pose = DirectedEdges.GetCurrentPose((float)distance);
-
-            return pose;
-        }
 
         public IPose GetPose(TimeSpan time)
             => GetPose(time, out _, out _, out _, out _, out _);

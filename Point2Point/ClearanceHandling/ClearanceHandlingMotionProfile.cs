@@ -32,16 +32,17 @@ namespace Point2Point.ClearanceHandling
             _logger = logger;
             _originalConstraints = GetConstraintsFrom(0);
         }
-
+        
         private List<EdgeVelocityConstraint> GetConstraintsFrom(double distance)
         {
             var constraints = new List<EdgeVelocityConstraint>();
             var distanceSum = 0.0;
             var numSkipped = 0;
+            var epsilon = 0.000001;
             foreach (var edge in _edges)
             {
                 var length = edge.Edge.Length();
-                if (distanceSum + length > distance)
+                if (distanceSum + length > distance+epsilon)
                 {
                     if (constraints.Count == 0)
                     {
@@ -157,20 +158,25 @@ namespace Point2Point.ClearanceHandling
         {
             edgeIndex = 0;
             var distanceSum = 0.0;
+            var epsilon = 0.00001;
             foreach (var edge in _edges)
             {
                 currentNode = edge.NodeFrom;
                 var length = edge.Edge.Length();
-                if (distanceSum + length > distance)
+                
+                // Distance from MotionGenerator < Distance of edges in Map  --> still on the same edge
+                if (distance <  distanceSum + length - epsilon)
                 {
                     return true;
                 }
-                else if (distanceSum + length == distance)
+                
+                //Target or point with zero velocity (i.e. Change in drive direction)
+                if (Math.Abs(distanceSum + length - distance) < epsilon)
                 {
                     currentNode = edge.NodeTo;
                     return true;
                 }
-
+                
                 distanceSum += length;
                 edgeIndex++;
             }
@@ -178,6 +184,11 @@ namespace Point2Point.ClearanceHandling
             currentNode = null;
             return false;
         }
+
+        // public double GetAllVelocityPoints()
+        // {
+        //     _jointMotionProfile.VelocityProfilePoints
+        // }
 
         public double GetTimeAtStartOf(IP2PEdge edge)
         {

@@ -8,7 +8,7 @@ namespace Point2Point
 {
     public static class IEnumerableEdgeExtensions
     {
-        public static IEnumerable<IP2PEdge> TakeDrivenAndCurrentEdge(this IEnumerable<IP2PEdge> edges, float distance)
+        public static IEnumerable<IP2PEdge> TakeDrivenAndCurrentEdge(this IEnumerable<IP2PEdge> edges, double distance)
         {
             var sumDistances = 0.0;
             return edges.TakeWhile(e =>
@@ -26,7 +26,7 @@ namespace Point2Point
             });
         }
 
-        public static (IP2PDirectedEdge edge, double distanceOnEdge) GetCurrentEdge(this IEnumerable<IP2PDirectedEdge> edges, float distance)
+        public static (IP2PDirectedEdge edge, double distanceOnEdge) GetCurrentEdge(this IEnumerable<IP2PDirectedEdge> edges, double distance)
         {
             var sumDistances = 0d;
             foreach (var edge in edges)
@@ -43,7 +43,7 @@ namespace Point2Point
             return (edges.Last(), edges.Last().Length());
         }
 
-        public static IPose GetCurrentPose(this IEnumerable<IP2PDirectedEdge> edges, float distance)
+        public static IPose GetCurrentPose(this IEnumerable<IP2PDirectedEdge> edges, double distance)
         {
             (var edge, var distanceOnEdge) = edges.GetCurrentEdge(distance);
             var rotation = edge.GetRotation(distanceOnEdge);
