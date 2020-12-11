@@ -6,6 +6,7 @@
         public double Acceleration { get; }
         public double Velocity { get; }
         public VelocityConstraint CorrespondingConstraint { get; }
+        
 
         public VelocityPoint(double distance, double acceleration, double velocity, VelocityConstraint correspondingConstraint)
         {

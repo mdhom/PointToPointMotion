@@ -12,14 +12,19 @@ namespace Point2Point.JointMotion
         public MotionParameter Parameters { get; }
         public double InitialAcceleration { get; }
         public double InitialVelocity { get; }
-        public ConstraintsCollection Constraints { get; }
+        public VelocityConstraintsCollection VelocityConstraints { get; }
 
-        public JointMotionProfileInputSet(MotionParameter parameters, double initialAcceleration, double initialVelocity, ConstraintsCollection constraints)
+        public StopConstraintCollection StopConstraints { get; set; }
+
+        public JointMotionProfileInputSet(MotionParameter parameters, double initialAcceleration,
+            double initialVelocity, VelocityConstraintsCollection velocityConstraints,
+            StopConstraintCollection stopConstraints)
         {
             Parameters = parameters;
             InitialAcceleration = initialAcceleration;
             InitialVelocity = initialVelocity;
-            Constraints = constraints;
+            VelocityConstraints = velocityConstraints;
+            StopConstraints = stopConstraints;
         }
     }
 }

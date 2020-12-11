@@ -12,7 +12,7 @@ namespace Point2Point.Tests
         public void GetEffectiveSegmentsWorks()
         {
             // Arrange
-            var constraints = new ConstraintsCollection(
+            var constraints = new VelocityConstraintsCollection(
                 new VelocityConstraint(0,    1000, 500),
                 new VelocityConstraint(1000, 1000, 400),
                 new VelocityConstraint(500,  1000, 200));
@@ -39,7 +39,7 @@ namespace Point2Point.Tests
         public void GapsBetweenSegmentsAreFilledUp()
         {
             // Arrange
-            var constraints = new ConstraintsCollection(
+            var constraints = new VelocityConstraintsCollection(
                 new VelocityConstraint(0, 1000, 500),
                 new VelocityConstraint(1000, 1000, 400),
                 new VelocityConstraint(2500, 1000, 200)); // start 500mm after end of last segment (2000)

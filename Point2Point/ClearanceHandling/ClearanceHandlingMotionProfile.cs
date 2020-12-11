@@ -118,7 +118,7 @@ namespace Point2Point.ClearanceHandling
 
             // create new motion profile
             _jointMotionProfile = new JointMotionProfile(_parameters, initialAcceleration, initialVelocity,
-                clearedConstraintsList);
+                clearedConstraintsList, new List<StopConstraint>());
             _jointMotionProfileCreatedTime = t;
             _jointMotionProfileCreatedDistance = initialDistance;
 

@@ -23,6 +23,7 @@ namespace Point2Point.UI
         private const string _logFolder = "log";
 
         private PlotModel _plotModel;
+
         public PlotModel PlotModel
         {
             get => _plotModel;
@@ -30,6 +31,7 @@ namespace Point2Point.UI
         }
 
         private PlotModel _plotModelVelocityProfile;
+
         public PlotModel PlotModelVelocityProfile
         {
             get => _plotModelVelocityProfile;
@@ -37,34 +39,39 @@ namespace Point2Point.UI
         }
 
         private bool _drawRawSeries;
+
         public bool DrawRawSeries
         {
             get => _drawRawSeries;
-            set => ChangeProperty(value, ref _drawRawSeries, () => Update(_randomConstraints));
+            set => ChangeProperty(value, ref _drawRawSeries, () => Update(_randomVelocityConstraints));
         }
 
         private bool _drawMotionProfile = true;
+
         public bool DrawMotionProfile
         {
             get => _drawMotionProfile;
-            set => ChangeProperty(value, ref _drawMotionProfile, () => Update(_randomConstraints));
+            set => ChangeProperty(value, ref _drawMotionProfile, () => Update(_randomVelocityConstraints));
         }
 
         private bool _drawVelocityPoints;
+
         public bool DrawVelocityPoints
         {
             get => _drawVelocityPoints;
-            set => ChangeProperty(value, ref _drawVelocityPoints, () => Update(_randomConstraints));
+            set => ChangeProperty(value, ref _drawVelocityPoints, () => Update(_randomVelocityConstraints));
         }
 
         private bool _drawModifiedConstraints;
+
         public bool DrawModifiedConstraints
         {
             get => _drawModifiedConstraints;
-            set => ChangeProperty(value, ref _drawModifiedConstraints, () => Update(_randomConstraints));
+            set => ChangeProperty(value, ref _drawModifiedConstraints, () => Update(_randomVelocityConstraints));
         }
 
         private int _historyNavigationIndex = -1;
+
         public int HistoryNavigationIndex
         {
             get => _historyNavigationIndex;
@@ -72,6 +79,7 @@ namespace Point2Point.UI
         }
 
         private int _numRecalculations;
+
         public int NumRecalculations
         {
             get => _numRecalculations;
@@ -79,6 +87,7 @@ namespace Point2Point.UI
         }
 
         private bool _randomTestRunning;
+
         public bool RandomTestRunning
         {
             get => _randomTestRunning;
@@ -100,12 +109,13 @@ namespace Point2Point.UI
         public double InitialAcceleration { get; set; }
 
         public MotionParameter RampMotionParameter { get; set; } = new MotionParameter(
-positiveJerk: 2000,
-negativeJerk: -2000,
-maximumAcceleration: 500,
-maximumDecceleration: -500);
+            positiveJerk: 2000,
+            negativeJerk: -2000,
+            maximumAcceleration: 500,
+            maximumDecceleration: -500);
 
         private int _numRandomTestRuns;
+
         public int NumRandomTestRuns
         {
             get => _numRandomTestRuns;
@@ -121,7 +131,7 @@ maximumDecceleration: -500);
         public RelayCommand StepCommand { get; }
 
         private readonly SemaphoreSlim _stepSemaphore = new SemaphoreSlim(0, 1);
-        private ConstraintsCollection _randomConstraints;
+        private VelocityConstraintsCollection _randomVelocityConstraints;
         private Task _randomTestTask;
         private CancellationTokenSource _randomTestCancellationTokenSource = new CancellationTokenSource();
 
@@ -129,38 +139,41 @@ maximumDecceleration: -500);
         {
             Directory.CreateDirectory(_logFolder);
 
-            _randomConstraints = new ConstraintsCollection(
-                new VelocityConstraint(0, 1000, 400));
-                // new VelocityConstraint(1000, 500, 400),
-                // new VelocityConstraint(1500, 500, 400),
-                // new VelocityConstraint(2000, 1000, 200));
-
-            Update(_randomConstraints);
-
-            RandomCommand = new RelayCommand(() =>
+            _randomVelocityConstraints = new VelocityConstraintsCollection()
             {
-                GenerateRandomProfile();
-            }, o => !RandomTestRunning);
+                new VelocityConstraint(0, 1000, 1000)
+            };
 
-            RandomTestCommand = new RelayCommand(() =>
+            var stopConstraintCollection = new StopConstraintCollection()
             {
-                ToggleRandomTestState();
-            });
+                new StopConstraint(500, TimeSpan.FromSeconds(5))
+            };
+            
+            
+            // new VelocityConstraint(1000, 500, 400),
+            // new VelocityConstraint(1500, 500, 400),
+            // new VelocityConstraint(2000, 1000, 200));
+
+            Update(_randomVelocityConstraints, stopConstraintCollection);
+
+            RandomCommand = new RelayCommand(() => { GenerateRandomProfile(); }, o => !RandomTestRunning);
+
+            RandomTestCommand = new RelayCommand(() => { ToggleRandomTestState(); });
 
             RecalcCommand = new RelayCommand(() =>
             {
-                if (_randomConstraints != null)
+                if (_randomVelocityConstraints != null)
                 {
                     HistoryNavigationIndex = -1;
-                    Update(_randomConstraints);
+                    Update(_randomVelocityConstraints);
                 }
             }, o => !RandomTestRunning);
 
             SaveCommand = new RelayCommand(() =>
             {
-                if (_randomConstraints != null)
+                if (_randomVelocityConstraints != null)
                 {
-                    SaveConstraintsCollection(_randomConstraints);
+                    SaveConstraintsCollection(_randomVelocityConstraints);
                 }
             }, o => !RandomTestRunning);
 
@@ -173,14 +186,14 @@ maximumDecceleration: -500);
             NavigateHistoryCommand = new RelayCommand<int>((d) =>
             {
                 HistoryNavigationIndex += d;
-                Update(_randomConstraints);
+                Update(_randomVelocityConstraints);
             });
 
             StepCommand = new RelayCommand(() =>
             {
                 _stepSemaphore.Release();
                 HistoryNavigationIndex++;
-                Update(_randomConstraints);
+                Update(_randomVelocityConstraints);
             }, o => !RandomTestRunning);
         }
 
@@ -196,8 +209,8 @@ maximumDecceleration: -500);
             if (dialog.ShowDialog().GetValueOrDefault(false))
             {
                 var jsonContent = File.ReadAllText(dialog.FileName);
-                _randomConstraints = JsonConvert.DeserializeObject<ConstraintsCollection>(jsonContent);
-                Update(_randomConstraints);
+                _randomVelocityConstraints = JsonConvert.DeserializeObject<VelocityConstraintsCollection>(jsonContent);
+                Update(_randomVelocityConstraints);
             }
         }
 
@@ -212,24 +225,24 @@ maximumDecceleration: -500);
             {
                 var jsonContent = File.ReadAllText(dialog.FileName);
                 var inputSet = JsonConvert.DeserializeObject<JointMotionProfileInputSet>(jsonContent);
-                _randomConstraints = inputSet.Constraints;
+                _randomVelocityConstraints = inputSet.VelocityConstraints;
                 InitialAcceleration = inputSet.InitialAcceleration;
                 InitialVelocity = inputSet.InitialVelocity;
                 RampMotionParameter = inputSet.Parameters;
-                Update(_randomConstraints);
+                Update(_randomVelocityConstraints);
             }
         }
 
-        private string SaveConstraintsCollection(ConstraintsCollection constraintsCollection)
+        private string SaveConstraintsCollection(VelocityConstraintsCollection velocityConstraintsCollection)
         {
             var filename = Path.Combine(_logFolder, $"{DateTime.Now:yyyy-MM-dd-HH-mm-ss}.json");
-            File.WriteAllText(filename, JsonConvert.SerializeObject(constraintsCollection));
+            File.WriteAllText(filename, JsonConvert.SerializeObject(velocityConstraintsCollection));
             return filename;
         }
 
         #endregion
 
-        private void Update(ConstraintsCollection constraintsCollection)
+        private void Update(VelocityConstraintsCollection velocityConstraintsCollection, StopConstraintCollection stopConstraintCollection = null)
         {
             var plotModel = new PlotModel()
             {
@@ -245,14 +258,15 @@ maximumDecceleration: -500);
 
             if (DrawRawSeries)
             {
-                DrawRawConstraints(constraintsCollection, plotModel);
+                DrawRawConstraints(velocityConstraintsCollection, plotModel);
             }
 
-            DrawEffectiveConstraints(constraintsCollection, plotModel);
+            DrawEffectiveConstraints(velocityConstraintsCollection, plotModel);
 
             try
             {
-                var profile = new JointMotionProfile(RampMotionParameter, InitialAcceleration, InitialVelocity, constraintsCollection);
+                var profile = new JointMotionProfile(RampMotionParameter, InitialAcceleration, InitialVelocity,
+                    velocityConstraintsCollection, stopConstraintCollection);
 
                 NumRecalculations = profile.NumRecalculations;
 
@@ -273,12 +287,13 @@ maximumDecceleration: -500);
 
                 if (HistoryNavigationIndex >= 0 && HistoryNavigationIndex < profile.EffectiveConstraintsHistory.Count)
                 {
-                    DrawEffectiveConstraintsHistory(profile.EffectiveConstraintsHistory[HistoryNavigationIndex], plotModel);
+                    DrawEffectiveConstraintsHistory(profile.EffectiveConstraintsHistory[HistoryNavigationIndex],
+                        plotModel);
                 }
             }
             catch (Exception ex)
             {
-                var filename = SaveConstraintsCollection(constraintsCollection);
+                var filename = SaveConstraintsCollection(velocityConstraintsCollection);
                 var exceptionFilename = Path.GetFileNameWithoutExtension(filename) + "-exception.json";
                 var sb = new StringBuilder();
                 sb.Append($"{ex.GetType()} - {ex.Message} \r\n{ex.StackTrace}");
@@ -287,24 +302,27 @@ maximumDecceleration: -500);
                     ex = ex.InnerException;
                     sb.Append($"{ex.GetType()} - {ex.Message} \r\n{ex.StackTrace}");
                 }
+
                 File.WriteAllText(Path.Combine(_logFolder, exceptionFilename), sb.ToString());
             }
 
             PlotModel = plotModel;
         }
 
-        #region Draw methods 
+        #region Draw methods
 
-        private static void DrawRawConstraints(ConstraintsCollection constraintsCollection, PlotModel plotModel)
+        private static void DrawRawConstraints(VelocityConstraintsCollection velocityConstraintsCollection,
+            PlotModel plotModel)
         {
             var index = 0;
-            foreach (var segment in constraintsCollection)
+            foreach (var segment in velocityConstraintsCollection)
             {
                 var lineSerie = new LineSeries()
                 {
                     StrokeThickness = 5,
                     Title = $"Segment {index}",
-                    ItemsSource = new List<DataPoint>() {
+                    ItemsSource = new List<DataPoint>()
+                    {
                         new DataPoint(segment.Start, segment.MaximumVelocity),
                         new DataPoint(segment.End, segment.MaximumVelocity)
                     }
@@ -340,7 +358,7 @@ maximumDecceleration: -500);
                 ItemsSource = new List<DataPoint>()
             };
 
-            foreach (var point in jointMotionProfile.EffectiveConstraints)
+            foreach (var point in jointMotionProfile.EffectiveVelocityConstraints)
             {
                 (effSerie.ItemsSource as List<DataPoint>).Add(new DataPoint(point.Start, point.MaximumVelocity));
                 (effSerie.ItemsSource as List<DataPoint>).Add(new DataPoint(point.End, point.MaximumVelocity));
@@ -429,16 +447,19 @@ maximumDecceleration: -500);
 
             foreach (var segment in historyEntry)
             {
-                (effectiveSerie.ItemsSource as List<DataPoint>).Add(new DataPoint(segment.Start, segment.MaximumVelocity));
-                (effectiveSerie.ItemsSource as List<DataPoint>).Add(new DataPoint(segment.End, segment.MaximumVelocity));
+                (effectiveSerie.ItemsSource as List<DataPoint>).Add(new DataPoint(segment.Start,
+                    segment.MaximumVelocity));
+                (effectiveSerie.ItemsSource as List<DataPoint>).Add(new DataPoint(segment.End,
+                    segment.MaximumVelocity));
             }
 
             plotModel.Series.Add(effectiveSerie);
         }
 
-        private static void DrawEffectiveConstraints(ConstraintsCollection constraintsCollection, PlotModel plotModel)
+        private static void DrawEffectiveConstraints(VelocityConstraintsCollection velocityConstraintsCollection,
+            PlotModel plotModel)
         {
-            var effectiveSegments = constraintsCollection.GetEffectiveConstraints();
+            var effectiveSegments = velocityConstraintsCollection.GetEffectiveConstraints();
 
             var effectiveSerie = new LineSeries()
             {
@@ -449,8 +470,10 @@ maximumDecceleration: -500);
 
             foreach (var segment in effectiveSegments)
             {
-                (effectiveSerie.ItemsSource as List<DataPoint>).Add(new DataPoint(segment.Start, segment.MaximumVelocity));
-                (effectiveSerie.ItemsSource as List<DataPoint>).Add(new DataPoint(segment.End, segment.MaximumVelocity));
+                (effectiveSerie.ItemsSource as List<DataPoint>).Add(new DataPoint(segment.Start,
+                    segment.MaximumVelocity));
+                (effectiveSerie.ItemsSource as List<DataPoint>).Add(new DataPoint(segment.End,
+                    segment.MaximumVelocity));
             }
 
             plotModel.Series.Add(effectiveSerie);
@@ -462,15 +485,30 @@ maximumDecceleration: -500);
 
         private void GenerateRandomProfile()
         {
-            var random = new Random((int)DateTime.Now.Ticks);
+            var random = new Random((int) DateTime.Now.Ticks);
 
-            var segments = new List<VelocityConstraint>() { new VelocityConstraint(0, random.NextDouble(200, 1000), random.Next(100, 1000)) };
+            var segments = new List<VelocityConstraint>()
+                {new VelocityConstraint(0, random.NextDouble(200, 1000), random.Next(100, 1000))};
             for (var i = 0; i < 15; i++)
             {
-                segments.Add(new VelocityConstraint(random.NextDouble(0, 5000), random.NextDouble(200, 1000), random.Next(100, 1000)));
+                segments.Add(new VelocityConstraint(random.NextDouble(0, 5000), random.NextDouble(200, 1000),
+                    random.Next(100, 1000)));
             }
-            _randomConstraints = new ConstraintsCollection(segments);
-            Update(_randomConstraints);
+
+            _randomVelocityConstraints = new VelocityConstraintsCollection(segments);
+
+
+            var stopSegments = new List<StopConstraint>();
+            for (var i = 0; i < 15; i++)
+            {
+                stopSegments.Add(new StopConstraint(random.NextDouble(0, 5000), TimeSpan.FromSeconds(1)));
+            }
+            
+
+            var stopConstraintCollection = new StopConstraintCollection(stopSegments);
+            
+            
+            Update(_randomVelocityConstraints, stopConstraintCollection);
         }
 
         private void ToggleRandomTestState()

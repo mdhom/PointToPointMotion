@@ -26,11 +26,11 @@ namespace Point2Point.JointMotion
 
         public VelocityConstraint(double start, double length, double maximumVelocity)
         {
-            if (length <= 0)
+            if (length < 0)
             {
                 throw new ArgumentOutOfRangeException(nameof(length), $"Length must be greater than zero");
             }
-            if (maximumVelocity <= 0)
+            if (maximumVelocity < 0)
             {
                 throw new ArgumentOutOfRangeException(nameof(maximumVelocity), $"MaximumVelocity must be greater than zero");
             }

@@ -3,20 +3,20 @@ using System.Linq;
 
 namespace Point2Point.JointMotion
 {
-    public class ConstraintsCollection : List<VelocityConstraint>
+    public class VelocityConstraintsCollection : List<VelocityConstraint>
     {
         #region Constructors
 
-        public ConstraintsCollection()
+        public VelocityConstraintsCollection()
         {
         }
 
-        public ConstraintsCollection(IEnumerable<VelocityConstraint> constraints)
+        public VelocityConstraintsCollection(IEnumerable<VelocityConstraint> constraints)
             : base(constraints)
         {
         }
 
-        public ConstraintsCollection(VelocityConstraint constraint, params VelocityConstraint[] constraints)
+        public VelocityConstraintsCollection(VelocityConstraint constraint, params VelocityConstraint[] constraints)
             : base(new List<VelocityConstraint>() { constraint }.Concat(constraints))
         {
         }
@@ -29,8 +29,9 @@ namespace Point2Point.JointMotion
         /// velocity profile) are removed and merged into a closed profile of constraints.
         /// </summary>
         /// <returns>A new ConstraintCollection with no overlapping constraints</returns>
-        public ConstraintsCollection GetEffectiveConstraints()
+        public VelocityConstraintsCollection GetEffectiveConstraints()
         {
+            
             var distanceValues = this
                 .SelectMany(s => new[] { s.Start, s.End })
                 .Distinct()
@@ -48,7 +49,7 @@ namespace Point2Point.JointMotion
                 }
             }
 
-            var effectiveConstraints = new ConstraintsCollection();
+            var effectiveConstraints = new VelocityConstraintsCollection();
             for (var i = 0; i < minPoints.Count; i++)
             {
                 var from = minPoints[i];
