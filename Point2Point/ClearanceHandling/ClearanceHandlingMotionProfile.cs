@@ -23,7 +23,8 @@ namespace Point2Point.ClearanceHandling
         public double ClearedLength { get; private set; }
         public TimeSpan Created { get; }
 
-        public ClearanceHandlingMotionProfile(TimeSpan created, IEnumerable<IP2PDirectedEdge> edges, MotionParameter parameters, double vMax, ILogger logger)
+        public ClearanceHandlingMotionProfile(TimeSpan created, IEnumerable<IP2PDirectedEdge> edges,
+            MotionParameter parameters, double vMax, ILogger logger)
         {
             Created = created;
             _edges = edges;
@@ -32,24 +33,24 @@ namespace Point2Point.ClearanceHandling
             _logger = logger;
             _originalConstraints = GetConstraintsFrom(0);
         }
-        
+
         private List<EdgeVelocityConstraint> GetConstraintsFrom(double distance)
         {
             var constraints = new List<EdgeVelocityConstraint>();
             var distanceSum = 0.0;
             var numSkipped = 0;
-            var epsilon = 0.000001;
-            foreach (var edge in _edges)
+            const double epsilon = 0.000001;
+            var edges = _edges.ToList();
+            for (var i = 0; i < edges.Count; i++)
             {
+                var edge = edges[i];
                 var length = edge.Edge.Length();
-                if (distanceSum + length > distance+epsilon)
+                if (distanceSum + length > distance + epsilon || i == edges.Count - 1)
                 {
-                    if (constraints.Count == 0)
-                    {
-                        var newConstraintLength = length - (distance - distanceSum);
-                        constraints.Add(new EdgeVelocityConstraint(edge.Edge, 0.0, newConstraintLength, Math.Min(edge.Edge.MaximumVelocity,_vMax))); //TODO get maximum allowed velocity on this edge
-                        break;
-                    }
+                    var newConstraintLength = length - (distance - distanceSum);
+                    constraints.Add(new EdgeVelocityConstraint(edge.Edge, 0.0, newConstraintLength,
+                        Math.Min(edge.Edge.MaximumVelocity, _vMax)));
+                    break;
                 }
                 else
                 {
@@ -57,12 +58,12 @@ namespace Point2Point.ClearanceHandling
                     distanceSum += length;
                     numSkipped++;
                 }
-
             }
 
             foreach (var edge in _edges.Skip(numSkipped + 1))
             {
-                constraints.Add(new EdgeVelocityConstraint(edge.Edge, constraints.Last().End, Math.Min(edge.Edge.MaximumVelocity,_vMax))); //TODO get maximum allowed velocity on this edge
+                constraints.Add(new EdgeVelocityConstraint(edge.Edge, constraints.Last().End,
+                    Math.Min(edge.Edge.MaximumVelocity, _vMax)));
             }
 
             return constraints;
@@ -82,7 +83,8 @@ namespace Point2Point.ClearanceHandling
                 distanceSum += length;
             }
 
-            _logger?.LogDebug($"Clearance granted: Edge-{edgeId}, No uncleared edge available (distanceSum={distanceSum}, edges={string.Join(",", _edges.Select(e => e.Id))})!");
+            _logger?.LogDebug(
+                $"Clearance granted: Edge-{edgeId}, No uncleared edge available (distanceSum={distanceSum}, edges={string.Join(",", _edges.Select(e => e.Id))})!");
 
             return false;
         }
@@ -107,13 +109,16 @@ namespace Point2Point.ClearanceHandling
 
             if (clearedConstraintsList.Last().CorrespondingEdge.Id != edgeId)
             {
-                _logger?.LogDebug($"Clearance granted WTF: Edge-{edgeId} => {string.Join(",", clearedConstraintsList.Select(c => c.CorrespondingEdge.Id))}");
+                _logger?.LogDebug(
+                    $"Clearance granted WTF: Edge-{edgeId} => {string.Join(",", clearedConstraintsList.Select(c => c.CorrespondingEdge.Id))}");
             }
 
-            _logger?.LogDebug($"Clearance granted: Edge-{edgeId} => {string.Join(",", clearedConstraintsList.Select(c => c.CorrespondingEdge.Id))}");
+            _logger?.LogDebug(
+                $"Clearance granted: Edge-{edgeId} => {string.Join(",", clearedConstraintsList.Select(c => c.CorrespondingEdge.Id))}");
 
             // create new motion profile
-            _jointMotionProfile = new JointMotionProfile(_parameters, initialAcceleration, initialVelocity, clearedConstraintsList);
+            _jointMotionProfile = new JointMotionProfile(_parameters, initialAcceleration, initialVelocity,
+                clearedConstraintsList);
             _jointMotionProfileCreatedTime = t;
             _jointMotionProfileCreatedDistance = initialDistance;
 
@@ -125,7 +130,8 @@ namespace Point2Point.ClearanceHandling
 
         public double GetS(double t)
         {
-            return (_jointMotionProfile?.GetS(t - _jointMotionProfileCreatedTime) ?? 0.0) + _jointMotionProfileCreatedDistance;
+            return (_jointMotionProfile?.GetS(t - _jointMotionProfileCreatedTime) ?? 0.0) +
+                   _jointMotionProfileCreatedDistance;
         }
 
         public double GetV(double t)
@@ -136,7 +142,8 @@ namespace Point2Point.ClearanceHandling
         public void GetStatus(double t, out double a, out double v, out double s)
             => GetStatus(t, out a, out v, out s, out _, out _);
 
-        public void GetStatus(double t, out double a, out double v, out double s, out IP2PNode currentNode, out int currentEdgeIndex)
+        public void GetStatus(double t, out double a, out double v, out double s, out IP2PNode currentNode,
+            out int currentEdgeIndex)
         {
             if (_jointMotionProfile != null)
             {
@@ -163,20 +170,20 @@ namespace Point2Point.ClearanceHandling
             {
                 currentNode = edge.NodeFrom;
                 var length = edge.Edge.Length();
-                
+
                 // Distance from MotionGenerator < Distance of edges in Map  --> still on the same edge
-                if (distance <  distanceSum + length - epsilon)
+                if (distance < distanceSum + length - epsilon)
                 {
                     return true;
                 }
-                
+
                 //Target or point with zero velocity (i.e. Change in drive direction)
                 if (Math.Abs(distanceSum + length - distance) < epsilon)
                 {
                     currentNode = edge.NodeTo;
                     return true;
                 }
-                
+
                 distanceSum += length;
                 edgeIndex++;
             }
@@ -200,7 +207,8 @@ namespace Point2Point.ClearanceHandling
         public double GetTimeAtEndOf(IP2PEdge edge)
         {
             var constraint = _originalConstraints.First(c => c.CorrespondingEdge == edge);
-            var timestamp = _jointMotionProfile.Timestamps.First(t => t.Distance == constraint.Start + constraint.Length);
+            var timestamp =
+                _jointMotionProfile.Timestamps.First(t => t.Distance == constraint.Start + constraint.Length);
             return timestamp.Time;
         }
     }
