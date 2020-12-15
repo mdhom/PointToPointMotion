@@ -18,6 +18,8 @@ namespace Point2Point.JointMotion
 
         public VelocityConstraintsCollection OriginalVelocityConstraints { get; }
         public VelocityConstraintsCollection EffectiveVelocityConstraints { get; }
+        
+        public VelocityConstraintsCollection OriginalEffectiveVelocityConstraints { get; }
 
         public StopConstraintCollection StopConstraintCollection { get; }
 
@@ -52,15 +54,20 @@ namespace Point2Point.JointMotion
             }
 
             OriginalVelocityConstraints =
-                new VelocityConstraintsCollection(inputSet.VelocityConstraints.Select(c => c.Copy()));
+                new VelocityConstraintsCollection(inputSet.VelocityConstraints.Select(c => c.Copy("OriginalVelocityConstraints")));
 
 
             EffectiveVelocityConstraints = inputSet.VelocityConstraints.GetEffectiveConstraints();
 
+            AddStopVelocityConstraints(); 
+            
+            OriginalEffectiveVelocityConstraints = 
+            new VelocityConstraintsCollection(EffectiveVelocityConstraints.Select(c => c.Copy("OriginalEffectiveVelocityConstraints")));
+
 #if DEBUG
             EffectiveConstraintsHistory = new List<VelocityConstraintsCollection>
             {
-                new VelocityConstraintsCollection(EffectiveVelocityConstraints.Select(ec => ec.Copy()))
+                new VelocityConstraintsCollection(EffectiveVelocityConstraints.Select(ec => ec.Copy("EffectiveConstraintsHistory")))
             };
 
             CloseHighTightGapsIteratively();
@@ -68,21 +75,19 @@ namespace Point2Point.JointMotion
             while (true)
             {
                 EffectiveConstraintsHistory.Add(
-                    new VelocityConstraintsCollection(EffectiveVelocityConstraints.Select(ec => ec.Copy())));
+                    new VelocityConstraintsCollection(EffectiveVelocityConstraints.Select(ec => ec.Copy("EffectiveConstraintsHistory in while loop"))));
 
-                if (CalculateProfile())
+                if (CalculateProfile(NumRecalculations))
                 {
                     break;
                 }
-                else
-                {
-                    // possibility to set brakepoint here
-                    NumRecalculations++;
 
-                    if (EffectiveVelocityConstraints.Any(ec => ec.MaximumVelocity < 0))
-                    {
-                        throw new JointMotionCalculationException($"Invalid Effective Constraint", inputSet);
-                    }
+                // possibility to set brakepoint here
+                NumRecalculations++;
+
+                if (EffectiveVelocityConstraints.Any(ec => ec.MaximumVelocity < 0))
+                {
+                    throw new JointMotionCalculationException($"Invalid Effective Constraint", inputSet);
                 }
             }
 #else
@@ -92,6 +97,68 @@ namespace Point2Point.JointMotion
 #endif
 
             Timestamps = CalculateTimestampsAtConstraintOriginalDistances().ToList();
+        }
+
+        private void AddStopVelocityConstraints()
+        {
+            //Split effective constraint if stop constraint is within: 
+            
+            if (StopConstraintCollection != null)
+            {
+                var orderedStopConstraints = StopConstraintCollection.OrderBy(x => x.Start);
+
+                int debugCounter = 0;
+                int splitCounter = 0; 
+                foreach (var stopConstraint in orderedStopConstraints)
+                {
+                    if (stopConstraint.Start <= EffectiveVelocityConstraints.Last().End)
+                    {
+                        debugCounter++; 
+                        var toSplit = EffectiveVelocityConstraints.FirstOrDefault(x =>
+                            x.Start <= stopConstraint.Start && x.End > stopConstraint.Start);
+
+                        var index = EffectiveVelocityConstraints.IndexOf(toSplit);
+
+                        if (toSplit != null)
+                        {
+                            splitCounter++; 
+                            var firstPart = new VelocityConstraint(toSplit.Start, stopConstraint.Start - toSplit.Start,
+                                toSplit.MaximumVelocity, "stopConstraint");
+                            var stopPart = new VelocityConstraint(stopConstraint.Start, 0, 0, "stopConstraint");
+                            var lastPart = new VelocityConstraint(stopConstraint.Start, toSplit.End - stopConstraint.Start,
+                                toSplit.MaximumVelocity, "stopConstraint");
+
+                            EffectiveVelocityConstraints.Remove(toSplit);
+                            EffectiveVelocityConstraints.Insert(index, firstPart);
+                            EffectiveVelocityConstraints.Insert(index + 1, stopPart);
+                            EffectiveVelocityConstraints.Insert(index + 2, lastPart);
+                        }
+                        else
+                        {
+                            int breakme = 5; 
+                        }
+                    }
+
+                    for (int i = 0; i < EffectiveVelocityConstraints.Count-1; i++)
+                    {
+                        if (EffectiveVelocityConstraints[i].MaximumVelocity == 0)
+                        {
+                            if (EffectiveVelocityConstraints[i+1].MaximumVelocity == 0)
+                            {
+                                int fuck = 4; 
+                            }
+                            
+                            if (i>0 &&EffectiveVelocityConstraints[i-1].MaximumVelocity == 0)
+                            {
+                                int fuck = 4; 
+                            }
+                            
+                        }
+                        
+                    }
+                    
+                }
+            }
         }
 
         public JointMotionProfile(MotionParameter parameters, double initialAcceleration, double initialVelocity,
@@ -199,40 +266,13 @@ namespace Point2Point.JointMotion
 
         #endregion
 
-        private bool CalculateProfile()
+        private bool CalculateProfile(int numRecalculations)
         {
             var velocityPoints = new List<VelocityPoint>()
             {
                 new VelocityPoint(0, InitialAcceleration, InitialVelocity, null)
             };
-            //Split effective constraint if stop constraint is within: 
-
-            if (StopConstraintCollection != null)
-            {
-                var orderedStopConstraints = StopConstraintCollection.OrderBy(x => x.Start);
-
-                foreach (var stopConstraint in orderedStopConstraints)
-                {
-                    var toSplit = EffectiveVelocityConstraints.FirstOrDefault(x =>
-                        x.Start <= stopConstraint.Start && x.End >= stopConstraint.Start);
-
-                    var index = EffectiveVelocityConstraints.IndexOf(toSplit);
-
-                    if (toSplit != null)
-                    {
-                        var firstPart = new VelocityConstraint(toSplit.Start, stopConstraint.Start - toSplit.Start,
-                            toSplit.MaximumVelocity);
-                        var stopPart = new VelocityConstraint(stopConstraint.Start, 0, 0);
-                        var lastPart = new VelocityConstraint(stopConstraint.Start, toSplit.End - stopConstraint.Start,
-                            toSplit.MaximumVelocity);
-
-                        EffectiveVelocityConstraints.Remove(toSplit);
-                        EffectiveVelocityConstraints.Insert(index, firstPart);
-                        EffectiveVelocityConstraints.Insert(index + 1, stopPart);
-                        EffectiveVelocityConstraints.Insert(index + 2, lastPart);
-                    }
-                }
-            }
+            
             
             for (var i = 0; i < EffectiveVelocityConstraints.Count; i++)
             {
@@ -246,15 +286,26 @@ namespace Point2Point.JointMotion
 
                 var startDistance = velocityPoints.Max(v => v.Distance);
 
+                if (v1 == 0 && v2 == 0)
+                {
+                    throw new Exception();
+                }
+
                 var situation = GetSituation(v0, constraint.MaximumVelocity, nextConstraint?.MaximumVelocity ?? 0);
 
                 if (situation == 3)
                 {
+                    if (constraint.Length == 0)
+                    {
+                        int breakeee = 5; 
+                    }
                     var distanceForAcc = ExtendedP2PCalculator.CalculateDistanceNeeded(a0, v0, v1, Parameters);
                     if (distanceForAcc < constraint.Length)
                     {
-                        velocityPoints.Add(new VelocityPoint(startDistance + distanceForAcc, v1, constraint));
-                        velocityPoints.Add(new VelocityPoint(startDistance + constraint.Length, v1, constraint));
+                        AddVelocityPoint(3,velocityPoints, startDistance + distanceForAcc, constraint, v1);
+                        //velocityPoints.Add(new VelocityPoint(startDistance + distanceForAcc, v1, constraint));
+                        AddVelocityPoint(3,velocityPoints, startDistance + constraint.Length, constraint, v1);
+                        //velocityPoints.Add(new VelocityPoint(startDistance + constraint.Length, v1, constraint));
                     }
                     else
                     {
@@ -275,20 +326,30 @@ namespace Point2Point.JointMotion
                 {
                     if (constraint.Length > 0)
                     {
-                        velocityPoints.Add(new VelocityPoint(startDistance + constraint.Length, v1, constraint));
+                        //velocityPoints.Add(new VelocityPoint(startDistance + constraint.Length, v1, constraint));
+                        AddVelocityPoint(7,velocityPoints, startDistance + constraint.Length, constraint, v1);
                     }
                 }
                 else if (situation == 8)
                 {
+                    if (constraint.Length == 0)
+                    {
+                        int breakeee = 5; 
+                    }
                     var brakeDistance = ExtendedP2PCalculator.CalculateDistanceNeeded(v1, v2, Parameters);
                     if (brakeDistance <= constraint.Length)
                     {
-                        velocityPoints.Add(new VelocityPoint(startDistance + (constraint.Length - brakeDistance), v1,
-                            constraint));
-                        velocityPoints.Add(new VelocityPoint(startDistance + constraint.Length, v2, constraint));
+                        AddVelocityPoint(8,velocityPoints, startDistance + (constraint.Length - brakeDistance), constraint, v1);
+                        //velocityPoints.Add(new VelocityPoint(startDistance + (constraint.Length - brakeDistance), v1, constraint));
+                        AddVelocityPoint(8,velocityPoints, startDistance + constraint.Length, constraint, v2);
+                        //velocityPoints.Add(new VelocityPoint(startDistance + constraint.Length, v2, constraint));
                     }
                     else
                     {
+                        if (constraint.Length == 0)
+                        {
+                            int breakeee = 5; 
+                        }
                         if (MergeWithPreviousConstraint(constraint, i))
                         {
                             RemoveVelocityPointsOfLastConstraint(velocityPoints);
@@ -299,6 +360,10 @@ namespace Point2Point.JointMotion
                 }
                 else if (!IterativlyFindSteppedDownVelocity(a0, v0, constraint, v2, startDistance, velocityPoints))
                 {
+                    if (constraint.Length == 0)
+                    {
+                        int breakeee = 5; 
+                    }
                     switch (situation)
                     {
                         case 1:
@@ -320,6 +385,7 @@ namespace Point2Point.JointMotion
                 }
             }
 
+            
 
             // remove ProfilePoints with same distance and velocity
             velocityPoints = velocityPoints.DistinctBy(pp => new {pp.Distance, pp.Velocity}).ToList();
@@ -382,6 +448,23 @@ namespace Point2Point.JointMotion
             }
 
             return true;
+        }
+
+        private static void AddVelocityPoint(int situation, List<VelocityPoint> velocityPoints, double distance, VelocityConstraint constraint,
+            double velocity, double acceleration = 0, string caller = "")
+        {
+            velocityPoints.Add(new VelocityPoint(distance, acceleration,velocity, constraint));
+            if (velocityPoints.Count > 1)
+            {
+                for (int i = 0; i < velocityPoints.Count-1; i++)
+                {
+                    if (velocityPoints[i].Velocity == 0 && velocityPoints[i+1].Velocity == 0)
+                    {
+                        throw new JointMotionCalculationException();
+                    }
+                }
+                
+            }
         }
 
         private IEnumerable<DistanceTimestamp> CalculateTimestampsAtConstraintOriginalDistances()
@@ -543,6 +626,10 @@ namespace Point2Point.JointMotion
         /// <returns>An integer between 1 and 8, representing the current situation.</returns>
         private int GetSituation(double v0, double v1, double v2)
         {
+            if (v0 == 0 || v1 == 0 || v2 == 0)
+            {
+                int breakmee = 5; 
+            }
             if (v1 == v0)
             {
                 // situations 7-8
@@ -582,8 +669,12 @@ namespace Point2Point.JointMotion
         private void MergeWithNextConstraint(VelocityConstraint constraint, int index)
         {
             EffectiveVelocityConstraints.RemoveAt(index);
-            EffectiveVelocityConstraints[index].Start -= constraint.Length;
-            EffectiveVelocityConstraints[index].Length += constraint.Length;
+            
+            EffectiveVelocityConstraints[index].SetStart(EffectiveVelocityConstraints[index].Start - constraint.Length,"MergeWithNextConstraint" );
+            EffectiveVelocityConstraints[index].SetLength(EffectiveVelocityConstraints[index].Length + constraint.Length,"MergeWithNextConstraint" );
+            
+            // EffectiveVelocityConstraints[index].Start -= constraint.Length;
+            // EffectiveVelocityConstraints[index].Length += constraint.Length;
         }
 
         /// <summary>
@@ -595,43 +686,67 @@ namespace Point2Point.JointMotion
         /// <returns>True if constraint was completely merged, otherwise false</returns>
         private bool MergeWithPreviousConstraint(VelocityConstraint constraint, int index, bool forceMerge = false)
         {
+      
             const double reduceByDistance = 100; // mm
             const double reduceByVelocity = 50; // mm/s
+
 
             if (index == 0)
             {
                 // first constraint -> no previous constraint -> try reducing velocity for reachability
-                constraint.ReduceBy(reduceByVelocity);
+                constraint.ReduceBy(reduceByVelocity, "MergeWithPreviousConstraint index == 0");
             }
             else
             {
                 var previousConstraint = EffectiveVelocityConstraints[index - 1];
+                
+                if (previousConstraint.MaximumVelocity == 0)
+                {
+                    
+                }
                 if (!forceMerge && previousConstraint > constraint && previousConstraint.Length > reduceByDistance)
                 {
                     // The previous constraint is higher than the given constraint. As it is not allowed
                     // to increase the MaxVel of a constraint, the MaxVel of the previous constraint must be reduced.
                     // Because the previous constraint may be a very long one, a complete merge at one time could waste
                     // precious "high velocity time". Therefore, the merging is done iteratively.
-                    constraint.Start -= reduceByDistance;
-                    constraint.Length += reduceByDistance;
-                    previousConstraint.Length -= reduceByDistance;
+                    
+                    constraint.SetStart(constraint.Start-reduceByDistance,"!forceMerge && previousConstraint > constraint && previousConstraint.Length > reduceByDistance"); 
+                    constraint.SetLength(constraint.Length +reduceByDistance, "!forceMerge && previousConstraint > constraint && previousConstraint.Length > reduceByDistance" );
+                    previousConstraint.SetLength(previousConstraint.Length - reduceByDistance, "!forceMerge && previousConstraint > constraint && previousConstraint.Length > reduceByDistance");
+                    
+                    
+                    // constraint.Start -= reduceByDistance;
+                    // constraint.Length += reduceByDistance;
+                    // previousConstraint.Length -= reduceByDistance;
                 }
                 else if (!forceMerge && previousConstraint < constraint &&
                          Math.Abs(previousConstraint - constraint) > reduceByVelocity)
                 {
                     // The previous constraint is below the given constraint. Therefore, the given constraints MaxVelo
                     // must be reduced. Because that could be a waste of "high velocity time", this is done interatively.
-                    constraint.ReduceBy(reduceByVelocity);
+                    constraint.ReduceBy(reduceByVelocity, "!forceMerge && previousConstraint < constraint &&Math.Abs(previousConstraint - constraint) > reduceByVelocity");
                 }
                 else
                 {
                     // Either foreMerge is true or the constraint which should be reduced is not long / high enough anymore
                     // -> now completely merge the constraints by removing the given constraint and adding its length to the previous constraint
                     // To be safe, the minimum of the both MaxVels is taken
+                    
+                    //
+
+                    if (previousConstraint.Length == 0 )
+                    {
+                        bool debugStop = false;
+                        return false; 
+                    }
+                    
                     EffectiveVelocityConstraints.RemoveAt(index);
-                    previousConstraint.Length += constraint.Length;
-                    previousConstraint.MaximumVelocity =
-                        Math.Min(constraint.MaximumVelocity, previousConstraint.MaximumVelocity);
+                    previousConstraint.SetLength(previousConstraint.Length + constraint.Length, "MergeWithPreviousConstraint - else"); 
+                    previousConstraint.SetMaximumVelocity(Math.Min(constraint.MaximumVelocity, previousConstraint.MaximumVelocity),"MergeWithPreviousConstraint - else" ); 
+                    
+                    // previousConstraint.Length += constraint.Length;
+                    // previousConstraint.MaximumVelocity = Math.Min(constraint.MaximumVelocity, previousConstraint.MaximumVelocity);
                     return true;
                 }
             }
@@ -666,8 +781,19 @@ namespace Point2Point.JointMotion
             double startDistance, List<VelocityPoint> velocityPoints)
         {
             const double stepDownSize = 5.0;
-
             var v1 = constraint.MaximumVelocity;
+            
+            if (v0== 0 && v1 == 0)
+            {
+                int stopmee = 5; 
+            }
+            
+            if (v1 == 0 && v2 == 0)
+            {
+                int stopmee = 5; 
+            }
+            
+            
             var limitVelocity = Math.Max(v0, v2);
             while (v1 > limitVelocity)
             {
@@ -691,13 +817,23 @@ namespace Point2Point.JointMotion
                 var distanceForSDAcc = ExtendedP2PCalculator.CalculateDistanceNeeded(a0, v0, v, Parameters);
                 var distanceForBrakingFromSD =
                     ExtendedP2PCalculator.CalculateDistanceNeeded(a0ToUse, v, v2, Parameters);
+                
+                if (constraint.Length == 0)
+                {
+                    int breakmee = 5; 
+                }
                 if (distanceForSDAcc + distanceForBrakingFromSD < constraint.Length)
                 {
+                 
                     // constant velocity will be reached
-                    velocityPoints.Add(new VelocityPoint(startDistance + distanceForSDAcc, a0ToUse, v, constraint));
-                    velocityPoints.Add(new VelocityPoint(startDistance + (constraint.Length - distanceForBrakingFromSD),
-                        a0ToUse, v, constraint));
-                    velocityPoints.Add(new VelocityPoint(startDistance + constraint.Length, a0ToUse, v2, constraint));
+                    AddVelocityPoint(99,velocityPoints,startDistance + distanceForSDAcc,constraint,v,a0ToUse );
+                    //velocityPoints.Add(new VelocityPoint(startDistance + distanceForSDAcc, a0ToUse, v, constraint));
+                    
+                    AddVelocityPoint(99,velocityPoints,startDistance + (constraint.Length - distanceForBrakingFromSD),constraint,v,a0ToUse );
+                    // velocityPoints.Add(new VelocityPoint(startDistance + (constraint.Length - distanceForBrakingFromSD),
+                    //     a0ToUse, v, constraint));
+                    AddVelocityPoint(99,velocityPoints,startDistance + constraint.Length,constraint,v2,a0ToUse );
+                    //velocityPoints.Add(new VelocityPoint(startDistance + constraint.Length, a0ToUse, v2, constraint));
                     return true;
                 }
                 else if (distanceForSDAcc + distanceForBrakingFromSD == constraint.Length)

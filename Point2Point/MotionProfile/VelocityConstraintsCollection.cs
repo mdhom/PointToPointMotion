@@ -57,13 +57,13 @@ namespace Point2Point.JointMotion
                 if (endIndex == -1)
                 {
                     // constraint with other velocity further found
-                    effectiveConstraints.Add(new VelocityConstraint(from.Distance, this.Max(s => s.End) - from.Distance, from.Velocity));
+                    effectiveConstraints.Add(new VelocityConstraint(from.Distance, this.Max(s => s.End) - from.Distance, from.Velocity, "GetEffectiveConstraints"));
                     return effectiveConstraints;
                 }
                 else
                 {
                     var to = minPoints[endIndex];
-                    effectiveConstraints.Add(new VelocityConstraint(from.Distance, to.Distance - from.Distance, from.Velocity));
+                    effectiveConstraints.Add(new VelocityConstraint(from.Distance, to.Distance - from.Distance, from.Velocity, "GetEffectiveConstraints"));
                 }
 
                 i = endIndex - 1;

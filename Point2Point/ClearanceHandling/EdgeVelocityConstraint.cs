@@ -10,13 +10,13 @@ namespace Point2Point.ClearanceHandling
         public IP2PEdge CorrespondingEdge { get; set; }
 
         public EdgeVelocityConstraint(IP2PEdge correspondingEdge, double start, double maximumVelocity)
-            : base(start, correspondingEdge.Length(), maximumVelocity)
+            : base(start, correspondingEdge.Length(), maximumVelocity,"EdgeVelocityConstraint")
         {
             CorrespondingEdge = correspondingEdge;
         }
 
         public EdgeVelocityConstraint(IP2PEdge correspondingEdge, double start, double manualLength, double maximumVelocity)
-            : base(start, manualLength, maximumVelocity)
+            : base(start, manualLength, maximumVelocity, "EdgeVelocityConstraint")
         {
             CorrespondingEdge = correspondingEdge;
         }

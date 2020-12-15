@@ -505,6 +505,8 @@ namespace Point2Point.Mathematics.ExtendedP2P
                 return vTotal <= vTarget;
             }
         }
+        
+        
 
         #endregion
     }

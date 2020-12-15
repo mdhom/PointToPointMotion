@@ -141,7 +141,7 @@ namespace Point2Point.UI
 
             _randomVelocityConstraints = new VelocityConstraintsCollection()
             {
-                new VelocityConstraint(0, 1000, 1000)
+                new VelocityConstraint(0, 1000, 1000, "first")
             };
 
             var stopConstraintCollection = new StopConstraintCollection()
@@ -485,21 +485,22 @@ namespace Point2Point.UI
 
         private void GenerateRandomProfile()
         {
+            const int numRandom = 5; 
             var random = new Random((int) DateTime.Now.Ticks);
 
             var segments = new List<VelocityConstraint>()
-                {new VelocityConstraint(0, random.NextDouble(200, 1000), random.Next(100, 1000))};
-            for (var i = 0; i < 15; i++)
+                {new VelocityConstraint(0, random.NextDouble(200, 1000), random.Next(100, 1000),"0")};
+            for (var i = 0; i < numRandom; i++)
             {
                 segments.Add(new VelocityConstraint(random.NextDouble(0, 5000), random.NextDouble(200, 1000),
-                    random.Next(100, 1000)));
+                    random.Next(100, 1000), i.ToString()));
             }
 
             _randomVelocityConstraints = new VelocityConstraintsCollection(segments);
 
 
             var stopSegments = new List<StopConstraint>();
-            for (var i = 0; i < 15; i++)
+            for (var i = 0; i < numRandom; i++)
             {
                 stopSegments.Add(new StopConstraint(random.NextDouble(0, 5000), TimeSpan.FromSeconds(1)));
             }
