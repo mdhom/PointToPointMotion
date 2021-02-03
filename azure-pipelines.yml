@@ -33,7 +33,13 @@ steps:
   inputs:
     command: 'test'
     projects: '**/*Test*.csproj'
-    arguments: '--collect:"Code coverage"'
+    arguments: '--collect:"XPlat Code Coverage"'
+    
+- task: PublishCodeCoverageResults@1
+  displayName: 'Publish code coverage report'
+  inputs:
+    codeCoverageTool: 'Cobertura'
+    summaryFileLocation: '$(Agent.TempDirectory)/**/coverage.cobertura.xml'
     
 - task: NuGetCommand@2
   displayName: 'NuGet pack'
