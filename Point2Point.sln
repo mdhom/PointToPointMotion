@@ -3,13 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.29827.131
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Point2Point.Tests", "Point2Point.Tests\Point2Point.Tests.csproj", "{7D11D93C-AAFB-49EC-A60B-C8F5C16A2E80}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Point2Point", "Point2Point\Point2Point.csproj", "{79B34321-DF1B-4DB7-9E89-5C2DE615D3E4}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Point2Point.UI", "Point2Point.UI\Point2Point.UI.csproj", "{291DBF1A-D9F6-4B7F-8945-F1EA2328A6A8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Point2PointMotion.Test", "Point2PointMotion.Test\Point2PointMotion.Test.csproj", "{E2671F96-33C4-438F-A02A-BA91763320DE}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Point2Point.Test", "Point2Point.Test\Point2Point.Test.csproj", "{E2671F96-33C4-438F-A02A-BA91763320DE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -17,10 +15,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{7D11D93C-AAFB-49EC-A60B-C8F5C16A2E80}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{7D11D93C-AAFB-49EC-A60B-C8F5C16A2E80}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{7D11D93C-AAFB-49EC-A60B-C8F5C16A2E80}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{7D11D93C-AAFB-49EC-A60B-C8F5C16A2E80}.Release|Any CPU.Build.0 = Release|Any CPU
 		{79B34321-DF1B-4DB7-9E89-5C2DE615D3E4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{79B34321-DF1B-4DB7-9E89-5C2DE615D3E4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{79B34321-DF1B-4DB7-9E89-5C2DE615D3E4}.Release|Any CPU.ActiveCfg = Release|Any CPU

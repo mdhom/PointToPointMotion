@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
 
-[assembly:InternalsVisibleTo("Point2Point.Tests")]
+[assembly:InternalsVisibleTo("Point2Point.Test")]
 
 namespace Point2Point
 {
