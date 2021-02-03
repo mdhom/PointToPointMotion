@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+    <metadata>
+        <id>Point2PointMotion</id>
+        <version>1.0</version>
+        <description>Maths for Point-To-Point motion</description>
+        <authors>Max Dhom</authors>
+    </metadata>
+    <files>
+        <file src="bin/Release/netstandard2.1/Point2Point.dll" target="netstandard2.1" />
+        <file src="bin/Release/netstandard2.1/Point2Point.pdb" target="netstandard2.1" />
+        <file src="bin/Release/netstandard2.1/Point2Point.deps.json" target="netstandard2.1" />
+    </files>
+</package>
