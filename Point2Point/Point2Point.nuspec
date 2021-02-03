@@ -5,6 +5,9 @@
         <version>1.0.1</version>
         <description>Maths for Point-To-Point motion</description>
         <authors>Max Dhom</authors>
+        <dependencies>
+          <group targetFramework=".NETStandard2.1" />
+        </dependencies>
     </metadata>
     <files>
         <file src="bin/Release/netstandard2.1/Point2Point.dll" target="lib/netstandard2.1" />
