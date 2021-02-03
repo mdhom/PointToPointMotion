@@ -270,10 +270,12 @@ maximumDecceleration: -200);
                     DrawJointMotionProfile(profile, plotModel);
                 }
 
+#if DEBUG
                 if (HistoryNavigationIndex >= 0 && HistoryNavigationIndex < profile.EffectiveConstraintsHistory.Count)
                 {
                     DrawEffectiveConstraintsHistory(profile.EffectiveConstraintsHistory[HistoryNavigationIndex], plotModel);
                 }
+#endif
             }
             catch (Exception ex)
             {
@@ -292,7 +294,7 @@ maximumDecceleration: -200);
             PlotModel = plotModel;
         }
 
-        #region Draw methods 
+#region Draw methods 
 
         private static void DrawRawConstraints(ConstraintsCollection constraintsCollection, PlotModel plotModel)
         {
@@ -380,10 +382,12 @@ maximumDecceleration: -200);
                 for (double t = 0; t < jointMotionProfile.TotalDuration; t += 0.01)
                 {
                     jointMotionProfile.GetStatus(t, out _, out var v, out var s);
+#if DEBUG
                     if (jointMotionProfile.EffectiveConstraintsHistory.First().ExeedsAnyConstraint(s, v))
                     {
                         throw new JointMotionCalculationException($"Out of bounds at {s}mm with {v}mm/s");
                     }
+#endif
 
                     (jointSerie.ItemsSource as List<DataPoint>).Add(new DataPoint(s, v));
                     (velocityProfileSerie.ItemsSource as List<DataPoint>).Add(new DataPoint(t, v));
@@ -455,9 +459,9 @@ maximumDecceleration: -200);
             plotModel.Series.Add(effectiveSerie);
         }
 
-        #endregion
+#endregion
 
-        #region Random + RandomTest
+#region Random + RandomTest
 
         private void GenerateRandomProfile()
         {
@@ -503,6 +507,6 @@ maximumDecceleration: -200);
             }
         }
 
-        #endregion
+#endregion
     }
 }
