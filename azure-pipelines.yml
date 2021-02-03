@@ -28,9 +28,11 @@ steps:
     configuration: '$(buildConfiguration)'
 
 - task: DotNetCoreCLI@2
+  displayName: 'Run tests'
   inputs:
     command: 'test'
     projects: '**/*Test*.csproj'
+    arguments: '--collect:"Code coverage"'
     
 - task: PublishCodeCoverageResults@1
   displayName: 'Publish code coverage report'
