@@ -35,12 +35,6 @@ steps:
     projects: '**/*Test*.csproj'
     arguments: '--collect:"Code coverage"'
     
-- task: PublishCodeCoverageResults@1
-  displayName: 'Publish code coverage report'
-  inputs:
-    codeCoverageTool: 'Cobertura'
-    summaryFileLocation: '$(Agent.TempDirectory)/**/*.coverage'
-
 - task: NuGetCommand@2
   displayName: 'NuGet pack'
   inputs:
